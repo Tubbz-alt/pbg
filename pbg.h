@@ -80,6 +80,7 @@
  * expression tree.
  */
 typedef enum {
+	PBG_UNKNOWN,    // Unknown expression type.
 	PBG_LT_TRUE,    // TRUE literal
 	PBG_LT_FALSE,   // FALSE literal
 	PBG_LT_NUMBER,  // NUMBER literal
@@ -103,9 +104,9 @@ typedef enum {
  * operator constrains both the number of children and the type of children.
  */
 typedef struct {
-	pbg_expr_type  _op;    /* Node type, determines the type/size of data. */
+	pbg_expr_type  _type;  /* Node type, determines the type/size of data. */
 	void*          _data;  /* Arbitrary data! */
-	int            _size;  /* Size of _data, in bytes. */
+	int            _size;  /* Number of things in _data. Determined by type. */
 } pbg_expr;
 
 /**
@@ -116,6 +117,16 @@ typedef struct {
 	unsigned char  _MM;    /* month */
 	unsigned char  _DD;    /* day */
 } pbg_type_date;
+
+/**
+ * Converts the string to a PBG expression operator. This does not parse
+ * literals! Use the appropriate pbg_to* function for that.
+ * @param op  Container to save parsed value to.
+ * @param str String to parse.
+ * @param n   Length of string to parse.
+ * @param PBG_UNKNOWN if parsing fails, PBG_OP_* if success.
+ */
+void pbg_toop(pbg_expr_type* op, char* str, int n);
 
 /**
  * Checks if the given string encodes a valid PBG TRUE literal.
@@ -181,6 +192,12 @@ void pbg_todate(pbg_type_date* ptr, char* str, int n);
  * @return 0 if successful, an error code if unsuccessful.
  */
 int pbg_parse(pbg_expr* e, char* str, int n);
+
+/**
+ * Destroys the PBG expression instance and frees all associated resources.
+ * @param e PBG expression to destroy.
+ */
+void pbg_free(pbg_expr* e);
 
 /**
  * Evaluates the Prefix Boolean Expression with the provided assignments.

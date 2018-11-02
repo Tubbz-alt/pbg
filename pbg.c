@@ -2,6 +2,26 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+void pbg_toop(pbg_expr_type* op, char* str, int n)
+{
+	if(n == 1)
+		     if(str[0] == '!') *op = PBG_OP_NOT;
+		else if(str[0] == '&') *op = PBG_OP_AND;
+		else if(str[0] == '|') *op = PBG_OP_OR;
+		else if(str[0] == '=') *op = PBG_OP_EQ;
+		else if(str[0] == '<') *op = PBG_OP_LT;
+		else if(str[0] == '>') *op = PBG_OP_GT;
+		else if(str[0] == '?') *op = PBG_OP_EXST;
+	else if(n == 2)
+		     if(str[0] == '!' && str[1] == '=') *op = PBG_OP_NEQ;
+		else if(str[0] == '<' && str[1] == '=') *op = PBG_OP_LTE;
+		else if(str[0] == '>' && str[1] == '=') *op = PBG_OP_GTE;
+	else
+		*op = PBG_UNKNOWN;
+}
+
+
 int pbg_istrue(char* str, int n)
 {
 	return n == 4 && 
@@ -104,37 +124,20 @@ int pbg_parse(pbg_expr* e, char* str, int n)
 			else lens[j]++;
 		
 		/* Parse the operator. */
-		if(lens[0] == 1) {
-			if(str[0] == '!') e->_op = PBG_OP_NOT;
-			else if(str[0] == '&') e->_op = PBG_OP_AND;
-			else if(str[0] == '|') e->_op = PBG_OP_OR;
-			else if(str[0] == '=') e->_op = PBG_OP_EQ;
-			else if(str[0] == '<') e->_op = PBG_OP_LT;
-			else if(str[0] == '>') e->_op = PBG_OP_GT;
-			else if(str[0] == '?') e->_op = PBG_OP_EXST;
-			else {
-				// TODO unsupported operation
-			}
-		}else if(lens[0] == 2) {
-			if(str[0] == '!' && str[1] == '=') e->_op = PBG_OP_NEQ;
-			else if(str[0] == '<' && str[1] == '=') e->_op = PBG_OP_LTE;
-			else if(str[0] == '>' && str[1] == '=') e->_op = PBG_OP_GTE;
-			else {
-				// TODO unsupported operation
-			}
-		}else{
+		pbg_toop(&e->_type, str, lens[0]);
+		if(e->_type == PBG_UNKNOWN) {
 			// TODO unsupported operation
 		}
-
+		
 		/* Enforce operator arity. */
-		if((e->_op == PBG_OP_NOT || e->_op == PBG_OP_EXST) && e->_size != 1) {
+		if((e->_type == PBG_OP_NOT || e->_type == PBG_OP_EXST) && e->_size != 1) {
 			// TODO these are unary operators
-		}else if((e->_op == PBG_OP_AND || e->_op == PBG_OP_OR || 
-					e->_op == PBG_OP_EQ) && e->_size < 2) {
+		}else if((e->_type == PBG_OP_AND || e->_type == PBG_OP_OR || 
+					e->_type == PBG_OP_EQ) && e->_size < 2) {
 			// TODO these are 2+ary operators
-		}else if((e->_op == PBG_OP_NEQ || e->_op == PBG_OP_LT || 
-					e->_op == PBG_OP_GT || e->_op == PBG_OP_GTE || 
-					e->_op == PBG_OP_LTE) && e->_size != 2) {
+		}else if((e->_type == PBG_OP_NEQ || e->_type == PBG_OP_LT || 
+					e->_type == PBG_OP_GT || e->_type == PBG_OP_GTE || 
+					e->_type == PBG_OP_LTE) && e->_size != 2) {
 			// TODO these are binary operators
 		}
 		
@@ -173,7 +176,7 @@ int pbg_parse(pbg_expr* e, char* str, int n)
 				// TODO failed to allocate memory for node
 			}
 			strncpy(e->_data, str+1, n-2);
-			e->_op = PBG_LT_KEY;
+			e->_type = PBG_LT_KEY;
 			
 		/* DATE. Convert to PBG DATE constant. */
 		}else if(pbg_isdate(str, n)) {
@@ -183,7 +186,7 @@ int pbg_parse(pbg_expr* e, char* str, int n)
 				// TODO failed to allocate memory for node
 			}
 			pbg_todate((pbg_type_date*)e->_data, str, n);
-			e->_op = PBG_LT_DATE;
+			e->_type = PBG_LT_DATE;
 			
 		/* NUMBER. Parse entire element as a float. */
 		}else if(pbg_isnumber(str, n)) {
@@ -196,7 +199,7 @@ int pbg_parse(pbg_expr* e, char* str, int n)
 			str[n] = '\0';
 			*((double*)e->_data) = atof(str);
 			str[n] = old;
-			e->_op = PBG_LT_NUMBER;
+			e->_type = PBG_LT_NUMBER;
 		
 		/* STRING. Copy everything between single quotes. */
 		}else if(pbg_isstring(str, n)) {
@@ -206,24 +209,30 @@ int pbg_parse(pbg_expr* e, char* str, int n)
 				// TODO failed to allocate memory for node
 			}
 			strncpy((char*)e->_data, str+1, n-2);
-			e->_op = PBG_LT_STRING;
+			e->_type = PBG_LT_STRING;
 			
 		/* TRUE. No need for any data. */
 		}else if(pbg_istrue(str, n)) {
 			e->_size = 0;
 			e->_data = NULL;
-			e->_op = PBG_LT_TRUE;
+			e->_type = PBG_LT_TRUE;
 		
 		/* FALSE. No need for any data. */
 		}else if(pbg_isfalse(str, n)) {
 			e->_size = 0;
 			e->_data = NULL;
-			e->_op = PBG_LT_FALSE;
+			e->_type = PBG_LT_FALSE;
 			
 		}else{
 			// TODO not a valid literal
 		}
 	}
+}
+
+
+void pbg_free(pbg_expr* e)
+{
+	
 }
 
 
