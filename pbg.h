@@ -70,6 +70,8 @@
  *                                                                              *
  ********************************************************************************/
 
+#define __IS_WHITESPACE(x) ((x) == ' ' || (x) == '\t')
+
 /**
  * These are the PBG operators supported by this implementation. They can be
  * cross-referenced with the grammar pseudocode above. Note: some values are
@@ -127,13 +129,136 @@ void pbe_date(pbe_date* date, char* str, int n)
 }
 
 /**
+ * Compares the first n bytes of target to the first non-whitespace n bytes of 
+ * have.
+ * @param target Target string.
+ * @param have   Have string.
+ * @param n      Length of comparison.
+ * @return Equal to 0 if equal, less than 0 if target < have, greater than 0 if 
+ *         target > have. */
+int pbe_strncmp(const char* target, char* have, int n)
+{
+	const char* s1 = (const char*) target;
+	const char* s2 = (const char*) have;
+	char c1, c2;
+	int i, j;
+	do {
+		c1 = i++, *s1++;
+		while(__IS_WHITESPACE(*s2)) j++, s2++;
+		c2 = j++, *s2++;
+	}while(c1 == c2);
+	return c1 - c2;
+}
+
+/**
  * Parses the string as a boolean expression in Prefix Boolean Grammar.
  * @param e   The boolean expression instance to initialize.
  * @param str String to parse.
  * @param n   Length of the string.
+ * @return 0 if successful, an error code if unsuccessful.
  */
-void pbe_parse(pbe* e, char* str, int n)
+int pbe_parse(pbe* e, char* str, int n)
 {
+	int i, j;
+	
+	/* Initialize provided struct. */
+	pbe->degree = 0;
+	
+	/* Every internal node is surrounded by one pair of parentheses. */
+	if(str[0] == '(' && str[n-1] == ')') {
+		/* Adjust string bounds appropriately. */
+		str++, n--;
+		
+		/* Count number of children nodes. */
+		int depth = 0;
+		for(i = 0; i < n; i++)
+			if(str[i] == '(') depth++;
+			else if(str[i] == ')') depth--;
+			else if(str[i] == ',' && depth == 0)
+				pbe->degree++;
+		if(!depth) {
+			// TODO unbalanced parentheses
+		}
+		if(!pbe->degree) {
+			// TODO no arguments provided to operator
+		}
+		
+		/* Allocate space for children. */
+		pbe->children = malloc(pbe->degree * sizeof(pbe));
+		
+		/* Get length of each child node. */
+		int* lens = (int*) malloc((pbe->degree+1) * sizeof(int));
+		for(i = 0; i < n; i++)
+			if(str[i] == '(') depth++;
+			else if(str[i] == ')') depth--;
+			else if(str[i] == ',' && depth == 0) j++;
+			else lens[j]++;
+		
+		/* Parse the operator. */
+		if(lens[0] == 1) {
+			if(!pbe_strncmp("!", str, 1)) pbe->op = NOT;
+			else if(!pbe_strncmp("&", str, 1)) pbe->op = AND;
+			else if(!pbe_strncmp("|", str, 1)) pbe->op = OR;
+			else if(!pbe_strncmp("=", str, 1)) pbe->op = EQ;
+			else if(!pbe_strncmp("<", str, 1)) pbe->op = LT;
+			else if(!pbe_strncmp(">", str, 1)) pbe->op = GT;
+			else if(!pbe_strncmp("?", str, 1)) pbe->op = EXST;
+			else {
+				// TODO unsupported operation
+			}
+		}else if(lens[0] == 2) {
+			if(!pbe_strncmp("!=", str, 2)) pbe->op = NEQ;
+			else if(!pbe_strncmp("<=", str, 2)) pbe->op = LTE;
+			else if(!pbe_strncmp(">=", str, 2)) pbe->op = GTE;
+			else {
+				// TODO unsupported operation
+			}
+		}else{
+			// TODO unsupported operation
+		}
+
+		/* Enforce operator arity. */
+		if((pbe->op == NOT || pbe->op == EXST) && pbe->degree != 1) {
+			// TODO these are unary operators
+		}else if((pbe->op == AND || pbe->op == OR || pbe->op == EQ) && pbe->degree < 2) {
+			// TODO these are 2+ary operators
+		}else if((pbe->op == NEQ || pbe->op == LT || pbe->op == GT || pbe->op == GTE || 
+				pbe->op == LTE) && pbe->degree != 2) {
+			// TODO these are binary operators
+		}
+		
+		/* Parse each child. */
+		j = 1;
+		depth = 0;
+		for(i = lens[0]; i < n; i++)
+			if(str[i] == '(') depth++;
+			else if(str[i] == ')') depth--;
+			else if(str[i] == ',' && depth == 0) {
+				if(!lens[j]) {
+					// TODO no argument provided
+				}
+				int err = pbe_parse(pbe->children+no, str+i+1, lens[j++]);
+				if(err) {
+					// TODO error in child
+				}
+			}
+		
+		/* No error! */
+		return NULL;
+		
+		
+	/* No leaf node is surrounded by parentheses. */
+	}else{
+		
+	}
+
+	/* Parse first element. */
+	int m = 0;
+	while(str[m] != ',') m++;
+	
+
+	
+	
 	if(IS_DATE(str, n)) {
 		pbe->degree = 1;
 		pbe->children = malloc(sizeof(pbe_date));
