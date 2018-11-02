@@ -70,201 +70,134 @@
  *                                                                              *
  ********************************************************************************/
 
+#ifndef __PBG_H__
+#define __PBG_H__
+
 /**
  * These are the PBG operators supported by this implementation. They can be
  * cross-referenced with the grammar pseudocode above. Note: some values are
  * no-ops, i.e. they are symbolic values used to indicate leaves in the
  * expression tree.
  */
-enum pbg_op {
-	_TRUE,    // not an op, denotes the TRUE literal
-	_FALSE,   // not an op, denotes the FALSE literal
-	_NUMBER,  // not an op, denotes a number literal
-	_STRING,  // not an op, denotes a string literal
-	_DATE,    // not an op, denotes a date literal
-	_KEY,     // not an op, denotes a key string
-	NOT,   // !
-	AND,   // &
-	OR,    // |
-	EQ,    // =
-	NEQ,   // !=
-	LT,    // <
-	GT,    // >
-	LTE,   // <=
-	GTE,   // >=
-	EXST;  // ?
-};
-
-/* This struct represents a DATE value. */
-typedef struct {
-	int year;
-	int month;
-	int day;
-	int hour;
-	int min;
-	int sec;
-} pbe_date;
+typedef enum {
+	PBG_LT_TRUE,    // TRUE literal
+	PBG_LT_FALSE,   // FALSE literal
+	PBG_LT_NUMBER,  // NUMBER literal
+	PBG_LT_STRING,  // STRING literal
+	PBG_LT_DATE,    // DATE literal
+	PBG_LT_KEY,     // KEY literal
+	PBG_OP_NOT,   // !
+	PBG_OP_AND,   // &
+	PBG_OP_OR,    // |
+	PBG_OP_EQ,    // =
+	PBG_OP_NEQ,   // !=
+	PBG_OP_LT,    // <
+	PBG_OP_GT,    // >
+	PBG_OP_LTE,   // <=
+	PBG_OP_GTE,   // >=
+	PBG_OP_EXST   // ?
+} pbg_expr_type;
 
 /**
  * This struct represents a Prefix Boolean Expression. The value of the
  * operator constrains both the number of children and the type of children.
  */
 typedef struct {
-	int     degree;    /* Number of children. */
-	void*   children;  /* Array of children. */
-	pbg_op  op;        /* Operator to be applied. */
-} pbe;
+	pbg_expr_type  _op;    /* Node type, determines the type/size of data. */
+	void*          _data;  /* Arbitrary data! */
+	int            _size;  /* Size of _data, in bytes. */
+} pbg_expr;
 
 /**
- * Parses the given date and stores it into the provided date struct.
- * @param date The date struct to return to.
- * @param str  String to parse.
- * @param n    Length of the string.
+ * This struct represents a PBG DATE literal.
  */
-void pbe_date(pbe_date* date, char* str, int n)
-{
+typedef struct {
+	unsigned int   _YYYY;  /* year */
+	unsigned char  _MM;    /* month */
+	unsigned char  _DD;    /* day */
+} pbg_type_date;
 
-}
+/**
+ * Checks if the given string encodes a valid PBG TRUE literal.
+ * @param str String encoding of PBG TRUE.
+ * @param n   Length of the string.
+ * @return 1 if str encodes a valid PBG TRUE literal, 0 otherwise.
+ */
+int pbg_istrue(char* str, int n);
+
+/**
+ * Checks if the given string encodes a valid PBG FALSE literal.
+ * @param str String encoding of PBG FALSE.
+ * @param n   Length of the string.
+ * @return 1 if str encodes a valid PBG FALSE literal, 0 otherwise.
+ */
+int pbg_isfalse(char* str, int n);
+
+/**
+ * Checks if the given string encodes a valid PBG NUMBER literal.
+ * @param str String encoding of PBG NUMBER.
+ * @param n   Length of the string.
+ * @return 1 if str encodes a valid PBG NUMBER literal, 0 otherwise.
+ */
+int pbg_isnumber(char* str, int n);
+
+/**
+ * Checks if the given string encodes a valid PBG KEY identifier.
+ * @param str String encoding of PBG KEY.
+ * @param n   Length of the string.
+ * @return 1 if str encodes a valid PBG KEY identifier, 0 otherwise.
+ */
+int pbg_iskey(char* str, int n);
+
+/**
+ * Checks if the given string encodes a valid PBG STRING literal.
+ * @param str String encoding of PBG STRING.
+ * @param n   Length of the string.
+ * @return 1 if str encodes a valid PBG STRING literal, 0 otherwise.
+ */
+int pbg_isstring(char* str, int n);
+
+/**
+ * Checks if the given string encodes a valid PBG DATE literal.
+ * @param str String encoding of PBG DATE.
+ * @param n   Length of the string.
+ * @return 1 if str encodes a valid PBG DATE literal, 0 otherwise.
+ */
+int pbg_isdate(char* str, int n);
+
+/**
+ * Converts the string to a PBG DATE literal.
+ * @param ptr PBG DATA struct to store conversion.
+ * @param str String to parse.
+ * @param n   Length of string to parse.
+ */
+void pbg_todate(pbg_type_date* ptr, char* str, int n);
 
 /**
  * Parses the string as a boolean expression in Prefix Boolean Grammar.
- * @param e   The boolean expression instance to initialize.
+ * @param e   PBG expression instance to initialize.
  * @param str String to parse.
  * @param n   Length of the string.
  * @return 0 if successful, an error code if unsuccessful.
  */
-int pbe_parse(pbe* e, char* str, int n)
-{
-	int i, j;
-	
-	/* Initialize provided struct. */
-	pbe->degree = 0;
-	
-	/* Every internal node is surrounded by one pair of parentheses. */
-	if(str[0] == '(' && str[n-1] == ')') {
-		/* Adjust string bounds appropriately. */
-		str++, n--;
-		
-		/* Count number of children nodes. */
-		int depth = 0;
-		for(i = 0; i < n && depth >= 0; i++)
-			if(str[i] == '(') depth++;
-			else if(str[i] == ')') depth--;
-			else if(str[i] == ',' && depth == 0)
-				pbe->degree++;
-		if(depth) {
-			// TODO unbalanced parentheses
-		}
-		if(pbe->degree == 0) {
-			// TODO no arguments provided to operator
-		}
-		
-		/* Allocate space for children. */
-		pbe->children = malloc(pbe->degree * sizeof(pbe));
-		if(pbe->children == NULL) {
-			// TODO failed to malloc enough space for node
-		}
-		
-		/* Get length of each child node. */
-		int* lens = (int*) malloc((pbe->degree+1) * sizeof(int));
-		if(lens == NULL) {
-			// TODO failed to malloc enough space for array
-		}
-		for(i = 0; i < n; i++)
-			if(str[i] == '(') depth++;
-			else if(str[i] == ')') depth--;
-			else if(str[i] == ',' && depth == 0) j++;
-			else lens[j]++;
-		
-		/* Parse the operator. */
-		if(lens[0] == 1) {
-			if(str[0] == '!') pbe->op = NOT;
-			else if(str[0] == '&') pbe->op = AND;
-			else if(str[0] == '|') pbe->op = OR;
-			else if(str[0] == '=') pbe->op = EQ;
-			else if(str[0] == '<') pbe->op = LT;
-			else if(str[0] == '>') pbe->op = GT;
-			else if(str[0] == '?') pbe->op = EXST;
-			else {
-				// TODO unsupported operation
-			}
-		}else if(lens[0] == 2) {
-			if(str[0] == '!' && str[1] == '=') pbe->op = NEQ;
-			else if(str[0] == '<' && str[1] == '=') pbe->op = LTE;
-			else if(str[0] == '>' && str[1] == '=') pbe->op = GTE;
-			else {
-				// TODO unsupported operation
-			}
-		}else{
-			// TODO unsupported operation
-		}
-
-		/* Enforce operator arity. */
-		if((pbe->op == NOT || pbe->op == EXST) && pbe->degree != 1) {
-			// TODO these are unary operators
-		}else if((pbe->op == AND || pbe->op == OR || pbe->op == EQ) && pbe->degree < 2) {
-			// TODO these are 2+ary operators
-		}else if((pbe->op == NEQ || pbe->op == LT || pbe->op == GT || pbe->op == GTE || 
-				pbe->op == LTE) && pbe->degree != 2) {
-			// TODO these are binary operators
-		}
-		
-		/* Parse each child. */
-		j = 1;
-		depth = 0;
-		for(i = lens[0]; i < n; i++)
-			if(str[i] == '(') depth++;
-			else if(str[i] == ')') depth--;
-			else if(str[i] == ',' && depth == 0) {
-				if(!lens[j]) {
-					// TODO no argument provided
-				}
-				int err = pbe_parse(pbe->children+no, str+i+1, lens[j++]);
-				if(err) {
-					// TODO error in child
-				}
-			}
-		
-		/* No error! */
-		return NULL;
-		
-		
-	/* No leaf node is surrounded by parentheses. */
-	}else{
-		if(str[0] == '[' && str[n-1] == ']') {
-			
-		}else if(pbe_isdate(str, n)) {
-			
-		}else if(pbe_isnumber(str, n)) {
-			
-		}else if(pbe_isstring(str, n)) {
-			
-		}else{
-			// TODO not a valid literal
-		}
-	}
-}
+int pbg_parse(pbg_expr* e, char* str, int n);
 
 /**
  * Evaluates the Prefix Boolean Expression with the provided assignments.
- * @param e The PBE to evaluate.
+ * @param e PBG expression to evaluate.
  */
-void pbe_evaluate(pbe* e)
-{
-	
-}
+void pbg_evaluate(pbg_expr* e);
 
 /**
  * Prints the Prefix Boolean Expression to the char pointer provided. If ptr is
  * NULL and n is 0, then this function will allocate memory on the heap which
  * must then be free'd by the caller. In this way, this function behaves in a
  * manner reminiscent of fgets.
- * @param e      The PBE to print.
- * @param bufptr The pointer to the output buffer.
- * @param n      The length of the buffer pointed to by bufptr.
+ * @param e      PBG expression to print.
+ * @param bufptr Pointer to the output buffer.
+ * @param n      Length of the buffer pointed to by bufptr.
  * @return Number of characters written to the buffer.
  */
-void pbe_gets(pbe* e, char** bufptr, int n)
-{
-	
-}
+void pbg_gets(pbg_expr* e, char** bufptr, int n);
+
+#endif  /* __PBG_H__ */
