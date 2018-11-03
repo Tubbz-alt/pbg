@@ -1,6 +1,7 @@
-#include "../pbg.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include "../pbg.h"
 
 #define PBG_RESULT(name,num) if((num) == 0) printf("%s:\tPassed!\n", name); else printf("%s:\t%d tests failed!\n", name, (num)); result = 0
 
@@ -53,6 +54,11 @@ int main()
 	/* pbg_isdate */
 	result = 0;
 	PBG_RESULT("pbg_isdate", result);
+	
+	/* pbg_parse */
+	pbg_expr* e = (pbg_expr*) malloc(sizeof(pbg_expr));
+	pbg_parse(e, "(!,TRUE)", 8);
+	pbg_free(e);
 	
 	return 0;
 }

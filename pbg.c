@@ -163,9 +163,6 @@ int pbg_parse(pbg_expr* e, char* str, int n)
 				}
 			}
 		
-		/* No error! */
-		return 0;
-		
 	/* No leaf node is surrounded by parentheses. */
 	}else{
 		/* KEY. Copy key identifier into string. */
@@ -227,6 +224,8 @@ int pbg_parse(pbg_expr* e, char* str, int n)
 			// TODO not a valid literal
 		}
 	}
+	/* No error! */
+	return 0;
 }
 
 
@@ -242,7 +241,13 @@ void pbg_evaluate(pbg_expr* e)
 }
 
 
+int pbg_gets_helper(pbg_expr* e, char* buf, int i)
+{
+	/* returns number of chars written to buffer */
+}
+
 void pbg_gets(pbg_expr* e, char** bufptr, int n)
 {
-	
+	*bufptr = (char*) malloc(1000);
+	pbg_gets_helper(e, *bufptr, 0);
 }
