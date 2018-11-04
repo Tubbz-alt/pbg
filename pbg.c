@@ -104,8 +104,7 @@ int pbg_parse(pbg_expr* e, char* str, int n)
 		for(i = 0; i < n && depth >= 0; i++)
 			if(str[i] == '(') depth++;
 			else if(str[i] == ')') depth--;
-			else if(str[i] == ',' && depth == 0)
-				e->_size++;
+			else if(str[i] == ',' && depth == 1) e->_size++;
 		if(depth) {
 			// TODO unbalanced parentheses
 		}
@@ -121,7 +120,7 @@ int pbg_parse(pbg_expr* e, char* str, int n)
 		for(i = 0; i < n; i++)
 			if(str[i] == '(') depth++;
 			else if(str[i] == ')') depth--;
-			else if(str[i] == ',' && depth == 0) j++;
+			else if(str[i] == ',' && depth == 1) j++;
 			else lens[j]++;
 		
 		/* Parse the operator. */
@@ -154,7 +153,7 @@ int pbg_parse(pbg_expr* e, char* str, int n)
 		for(i = lens[0]; i < n; i++)
 			if(str[i] == '(') depth++;
 			else if(str[i] == ')') depth--;
-			else if(str[i] == ',' && depth == 0) {
+			else if(str[i] == ',' && depth == 1) {
 				if(!lens[j]) {
 					// TODO no argument provided
 				}
