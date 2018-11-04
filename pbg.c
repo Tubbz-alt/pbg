@@ -1,5 +1,6 @@
 #include "pbg.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 
@@ -243,11 +244,94 @@ void pbg_evaluate(pbg_expr* e)
 
 int pbg_gets_helper(pbg_expr* e, char* buf, int i)
 {
-	/* returns number of chars written to buffer */
+	if(e->_type < PBG_MAX_LT)
+	{
+		char* data;
+		pbg_type_date* dt;
+		switch(e->_type) {
+			case PBG_LT_TRUE:
+				buf[i++] = 'T';
+				buf[i++] = 'R';
+				buf[i++] = 'U';
+				buf[i++] = 'E';
+				break;
+			case PBG_LT_FALSE:
+				buf[i++] = 'F';
+				buf[i++] = 'A';
+				buf[i++] = 'L';
+				buf[i++] = 'S';
+				buf[i++] = 'E';
+				break;
+			case PBG_LT_STRING:
+				data = (char*) e->_data;
+				buf[i++] = '\'';
+				for(int i = 0; i < e->_size; i++)
+					buf[i++] = data[i];
+				buf[i++] = '\'';
+				break;
+			case PBG_LT_DATE:
+				dt = (pbg_type_date*) e->_data;
+				i += snprintf(buf+i, 4, "%04d", dt->_YYYY);
+				i += snprintf(buf+i, 2, "%02d", dt->_MM);
+				i += snprintf(buf+i, 2, "%02d", dt->_DD);
+				break;
+			case PBG_LT_KEY:
+				data = (char*) e->_data;
+				buf[i++] = '[';
+				for(int i = 0; i < e->_size; i++)
+					buf[i++] = data[i];
+				buf[i++] = ']';
+				break;
+			default:
+				// TODO unknown operator!
+				break;
+		}
+	
+	}else if(e->_type < PBG_MAX_OP) {
+		buf[i++] = '(';
+		switch(e->_type) {
+			case PBG_OP_NOT:  buf[i++] = '!'; break;
+			case PBG_OP_AND:  buf[i++] = '&'; break;
+			case PBG_OP_OR:   buf[i++] = '|'; break;
+			case PBG_OP_EQ:   buf[i++] = '='; break;
+			case PBG_OP_LT:   buf[i++] = '<'; break;
+			case PBG_OP_GT:   buf[i++] = '>'; break;
+			case PBG_OP_EXST: buf[i++] = '?'; break;
+			case PBG_OP_NEQ:  buf[i++] = '!', buf[i++] = '='; break;
+			case PBG_OP_LTE:  buf[i++] = '<', buf[i++] = '='; break;
+			case PBG_OP_GTE:  buf[i++] = '>', buf[i++] = '='; break;
+			default:
+				// TODO unknown operator!
+				break;
+		}
+		buf[i++] = ',';
+		i = pbg_gets_helper(e, buf, i);
+		buf[i++] = ')';
+	}
+	return i;
 }
 
-void pbg_gets(pbg_expr* e, char** bufptr, int n)
+char* pbg_gets(pbg_expr* e, char** bufptr, int n)
 {
 	*bufptr = (char*) malloc(1000);
-	pbg_gets_helper(e, *bufptr, 0);
+	int len = pbg_gets_helper(e, *bufptr, 0);
+	*(bufptr[len]) = '\0';
+	return *bufptr;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

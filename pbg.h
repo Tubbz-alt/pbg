@@ -87,16 +87,18 @@ typedef enum {
 	PBG_LT_STRING,  // STRING literal
 	PBG_LT_DATE,    // DATE literal
 	PBG_LT_KEY,     // KEY literal
+	PBG_MAX_LT,     // END OF LITERALS!
 	PBG_OP_NOT,   // !
 	PBG_OP_AND,   // &
 	PBG_OP_OR,    // |
 	PBG_OP_EQ,    // =
-	PBG_OP_NEQ,   // !=
 	PBG_OP_LT,    // <
 	PBG_OP_GT,    // >
+	PBG_OP_EXST,  // ?
+	PBG_OP_NEQ,   // !=
 	PBG_OP_LTE,   // <=
 	PBG_OP_GTE,   // >=
-	PBG_OP_EXST   // ?
+	PBG_MAX_OP    // END OF OPS!
 } pbg_expr_type;
 
 /**
@@ -215,6 +217,6 @@ void pbg_evaluate(pbg_expr* e);
  * @param n      Length of the buffer pointed to by bufptr.
  * @return Number of characters written to the buffer.
  */
-void pbg_gets(pbg_expr* e, char** bufptr, int n);
+char* pbg_gets(pbg_expr* e, char** bufptr, int n);
 
 #endif  /* __PBG_H__ */

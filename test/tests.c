@@ -58,6 +58,9 @@ int main()
 	/* pbg_parse */
 	pbg_expr* e = (pbg_expr*) malloc(sizeof(pbg_expr));
 	pbg_parse(e, "(!,TRUE)", 8);
+	char* str = pbg_gets(e, NULL, 0);
+	printf("%s\n", str);
+	free(str);
 	pbg_free(e);
 	
 	return 0;
