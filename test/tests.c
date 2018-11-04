@@ -57,7 +57,9 @@ int main()
 	
 	/* pbg_parse */
 	pbg_expr* e = (pbg_expr*) malloc(sizeof(pbg_expr));
-	pbg_parse(e, "(!,TRUE)", 8);
+	char* test = "(&,(&,(&,[1],[2]),[3],[4],[5]),(&,[6],[7],[8]))";
+	int len = strlen(test);
+	pbg_parse(e, test, len);
 	char* str = pbg_gets(e, NULL, 0);
 	printf("%s\n", str);
 	free(str);

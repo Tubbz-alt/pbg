@@ -6,6 +6,7 @@
 
 void pbg_toop(pbg_expr_type* op, char* str, int n)
 {
+	str += n;
 	if(n == 1)
 		     if(str[0] == '!') *op = PBG_OP_NOT;
 		else if(str[0] == '&') *op = PBG_OP_AND;
@@ -64,7 +65,7 @@ int pbg_isstring(char* str, int n)
 
 int pbg_isdate(char* str, int n)
 {
-	return n == 10 && 
+	return n == 10 &&
 		str[0] >= '0' && str[0] <= '9' && 
 		str[1] >= '0' && str[1] <= '9' && 
 		str[2] >= '0' && str[2] <= '9' && 
@@ -87,17 +88,16 @@ void pbg_todate(pbg_type_date* ptr, char* str, int n)
 }
 
 
-int pbg_parse(pbg_expr* e, char* str, int n)
+int pbg_parse_h(pbg_expr* e, char* str, int n)
 {
 	int i, j;
 	
 	/* Initialize provided struct. */
 	e->_size = 0;
+	e->_type = PBG_UNKNOWN;
 	
 	/* Every internal node is surrounded by one pair of parentheses. */
 	if(str[0] == '(' && str[n-1] == ')') {
-		/* Adjust string bounds appropriately. */
-		str++, n--;
 		
 		/* Count number of children nodes. */
 		int depth = 0;
@@ -113,18 +113,22 @@ int pbg_parse(pbg_expr* e, char* str, int n)
 		}
 		
 		/* Get length of each child node. */
-		int* lens = (int*) malloc((e->_size+1) * sizeof(int));
+		int* lens = (int*) calloc(e->_size+1, sizeof(int));
 		if(lens == NULL) {
 			// TODO failed to malloc enough space for array
 		}
-		for(i = 0; i < n; i++)
+		for(i = 0, j = 0; i < n; i++) {
+			/* Track depth in tree. */
 			if(str[i] == '(') depth++;
 			else if(str[i] == ')') depth--;
-			else if(str[i] == ',' && depth == 1) j++;
-			else lens[j]++;
+
+			/* Compute length of child. */
+			if(str[i] == ',' && depth == 1) j++;
+			else if(depth > 0 && i != 0) lens[j]++;
+		}
 		
 		/* Parse the operator. */
-		pbg_toop(&e->_type, str, lens[0]);
+		pbg_toop(&(e->_type), str, lens[0]);
 		if(e->_type == PBG_UNKNOWN) {
 			// TODO unsupported operation
 		}
@@ -148,20 +152,23 @@ int pbg_parse(pbg_expr* e, char* str, int n)
 		}
 		
 		/* Parse each child. */
-		j = 1;
-		depth = 0;
-		for(i = lens[0]; i < n; i++)
+		pbg_expr* children = (pbg_expr*) e->_data;
+		for(i = 0, j = 1, depth = 0; i < n; i++)
 			if(str[i] == '(') depth++;
 			else if(str[i] == ')') depth--;
 			else if(str[i] == ',' && depth == 1) {
 				if(!lens[j]) {
 					// TODO no argument provided
 				}
-				int err = pbg_parse(e->_data+j-1, str+i+1, lens[j++]);
+				int err = pbg_parse_h(children+j-1, str+i+1, lens[j]);
 				if(err) {
 					// TODO error in child
 				}
+				j++;
 			}
+
+		/* Done! Clean up. */
+		free(lens);
 		
 	/* No leaf node is surrounded by parentheses. */
 	}else{
@@ -228,10 +235,38 @@ int pbg_parse(pbg_expr* e, char* str, int n)
 	return 0;
 }
 
+int pbg_parse(pbg_expr* e, char* str, int n)
+{
+	if((str[0] != '(' || str[n-1] != ')') && !pbg_istrue(str, n) && !pbg_isfalse(str, n)) {
+		// TODO outermost unit must have a truth value
+	}
+	return pbg_parse_h(e, str, n);
+}
+
+
+void pbg_free_r(pbg_expr* e)
+{
+	if(e->_type < PBG_MAX_LT) {
+		switch(e->_type) {
+			case PBG_LT_KEY:
+			case PBG_LT_NUMBER:
+			case PBG_LT_DATE:
+			case PBG_LT_STRING:
+				free(e->_data);
+			default: break;
+		}
+	}else if(e->_type < PBG_MAX_OP) {
+		pbg_expr* children = (pbg_expr*) e->_data;
+		for(int i = 0; i < e->_size; i++)
+			pbg_free_r(children+i);
+		free(e->_data);
+	}
+}
 
 void pbg_free(pbg_expr* e)
 {
-	
+	pbg_free_r(e);
+	free(e);
 }
 
 
@@ -241,7 +276,7 @@ void pbg_evaluate(pbg_expr* e)
 }
 
 
-int pbg_gets_helper(pbg_expr* e, char* buf, int i)
+int pbg_gets_r(pbg_expr* e, char* buf, int i)
 {
 	if(e->_type < PBG_MAX_LT)
 	{
@@ -264,21 +299,23 @@ int pbg_gets_helper(pbg_expr* e, char* buf, int i)
 			case PBG_LT_STRING:
 				data = (char*) e->_data;
 				buf[i++] = '\'';
-				for(int i = 0; i < e->_size; i++)
-					buf[i++] = data[i];
+				for(int j = 0; j < e->_size; j++)
+					buf[i++] = data[j];
 				buf[i++] = '\'';
 				break;
 			case PBG_LT_DATE:
 				dt = (pbg_type_date*) e->_data;
-				i += snprintf(buf+i, 4, "%04d", dt->_YYYY);
-				i += snprintf(buf+i, 2, "%02d", dt->_MM);
-				i += snprintf(buf+i, 2, "%02d", dt->_DD);
+				i += snprintf(buf+i, 5, "%04d", dt->_YYYY);
+				buf[i++] = '-';
+				i += snprintf(buf+i, 3, "%02d", dt->_MM);
+				buf[i++] = '-';
+				i += snprintf(buf+i, 3, "%02d", dt->_DD);
 				break;
 			case PBG_LT_KEY:
 				data = (char*) e->_data;
 				buf[i++] = '[';
-				for(int i = 0; i < e->_size; i++)
-					buf[i++] = data[i];
+				for(int j = 0; j < e->_size; j++)
+					buf[i++] = data[j];
 				buf[i++] = ']';
 				break;
 			default:
@@ -304,7 +341,12 @@ int pbg_gets_helper(pbg_expr* e, char* buf, int i)
 				break;
 		}
 		buf[i++] = ',';
-		i = pbg_gets_helper(e, buf, i);
+		pbg_expr* children = (pbg_expr*)e->_data;
+		for(int j = 0; j < e->_size; j++) {
+			i = pbg_gets_r(&children[j], buf, i);
+			if(j != e->_size-1)
+				buf[i++] = ',';
+		}
 		buf[i++] = ')';
 	}
 	return i;
@@ -312,10 +354,10 @@ int pbg_gets_helper(pbg_expr* e, char* buf, int i)
 
 char* pbg_gets(pbg_expr* e, char** bufptr, int n)
 {
-	*bufptr = (char*) malloc(1000);
-	int len = pbg_gets_helper(e, *bufptr, 0);
-	*(bufptr[len]) = '\0';
-	return *bufptr;
+	char* buf = (char*) malloc(1000);
+	int len = pbg_gets_r(e, buf, 0);
+	buf[len] = '\0';
+	return buf;
 }
 
 
