@@ -41,6 +41,20 @@ int main()
 	
 	/* pbg_isnumber */
 	result = 0;
+	result += test_pbg_istype(pbg_isnumber, "3.14e1", 1);
+	result += test_pbg_istype(pbg_isnumber, "3", 1);
+	result += test_pbg_istype(pbg_isnumber, "03", 0);
+	result += test_pbg_istype(pbg_isnumber, "3.", 0);
+	result += test_pbg_istype(pbg_isnumber, "3.0", 1);
+	result += test_pbg_istype(pbg_isnumber, ".", 0);
+	result += test_pbg_istype(pbg_isnumber, "0", 1);
+	result += test_pbg_istype(pbg_isnumber, "0.123a45", 0);
+	result += test_pbg_istype(pbg_isnumber, "0.0.1", 0);
+	result += test_pbg_istype(pbg_isnumber, "0.0", 1);
+	result += test_pbg_istype(pbg_isnumber, "e10", 1);
+	result += test_pbg_istype(pbg_isnumber, ".0", 1);
+	result += test_pbg_istype(pbg_isnumber, "0e10", 1);
+	result += test_pbg_istype(pbg_isnumber, "0e", 0);
 	PBG_RESULT("pbg_isnumber", result);
 	
 	/* pbg_iskey */

@@ -45,9 +45,45 @@ int pbg_isfalse(char* str, int n)
 }
 
 
+int is_a_digit(char c) { return c >= '0' && c <= '9'; }
+
 int pbg_isnumber(char* str, int n)
 {
-	return 0;
+	int i = 0;
+	
+	/* Check if negative or positive */
+	if(str[i] == '-' || str[i] == '+') i++;
+	
+	/* Parse everything before the dot. */
+	if(str[i] != '0' && is_a_digit(str[i])) {
+		while(i != n && is_a_digit(str[i])) i++;
+		if(i != n && !is_a_digit(str[i]) && str[i] != '.') return 0;
+	}else if(str[i] == '0') {
+		if(++i != n && !(str[i] == '.' || str[i] == 'e' || str[i] == 'E')) return 0;
+	}
+	
+	/* Parse everything after the dot. */
+	if(str[i] == '.') {
+		/* Last character must be a digit. */
+		if(i++ == n-1) return 0;
+		/* Exhaust all digits. */
+		while(i != n && is_a_digit(str[i])) i++;
+		if(i != n && !is_a_digit(str[i]) && str[i] != 'e' && str[i] != 'E') return 0;
+	}
+	
+	/* Parse everything after the exponent. */
+	if(str[i] == 'e' || str[i] == 'E') {
+		/* Last character must be a digit. */
+		if(i++ == n-1) return 0;
+		/* Parse positive or negative sign. */
+		if(str[i] == '-' || str[i] == '+') i++;
+		/* Exhaust all digits. */
+		while(i != n && is_a_digit(str[i])) i++;
+		if(i != n && !is_a_digit(str[i])) return 0;
+	}
+	
+	/* Probably a number! */
+	return 1;
 }
 
 
