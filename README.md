@@ -111,3 +111,7 @@ Prints the PBG expression to the char pointer provided. If ptr is NULL and n is 
 ## status
 
 This project is still a work-in-progress. Updates will be forthcoming. 
+-  Implement `pbg_evaluate`. How can an explicit dictionary representation be avoided?
+-  Add error handling!
+-  Fix `pbg_gets`: short-circuit evaluation once buffer is full, restore `gets`-like behavior and size buffer precisely.
+-  Re-add whitespace insensitivity.
