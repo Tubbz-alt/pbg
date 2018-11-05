@@ -14,7 +14,7 @@ The following is a PBG expression:
 ```
 This expression checks if the start date is before the end date and if the start date is October 12, 2018. It will evaluate to `TRUE` only if both conditions are `TRUE`. 
 
-PBG is designed with databases in mind. In particular, it was devised to be used by [**tbd**, the Tiny Database DBMS](https://github.com/imtjd/tbd). 
+PBG is designed with databases in mind. In particular, it was devised to be used by [**tbd**, the Tiny Boolean DBMS](https://github.com/imtjd/tbd). 
 
 
 ## goals
