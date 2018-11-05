@@ -1,11 +1,13 @@
 # pbg
-Prefix Boolean Grammar
+(Prefix Boolean Grammar) A simple grammar for writing boolean expressions implemented in a small, portable C library.
 
-[about](#about) | [goals](#goals) | [definition](#definition)
+[about](#about) | [goals](#goals) | [definition](#definition) | [API](#API)
+
 
 ## about
 
 **pbg**, an initialism for Prefix Boolean Grammar, is a simple grammar for writing boolean expressions. The grammar itself is supercharged by an input dictionary. 
+
 
 ## goals
 
@@ -16,6 +18,7 @@ First, it must be **simple**. It shouldn't be bogged down by redundant features,
 Second, it must be **unambigous**. Any expression string must have an unambiguous truth value. Operator precedence invites bugs for the sake of better readability. This seems like a bad idea, so it is avoided.
 
 Third, it must be **expressive**. Thoughts should be easily translated into concise expressions. The grammar falls short of Turing completeness for the sake of simplicity, but it can still go a long way. 
+
 
 ## definition
 
@@ -56,3 +59,42 @@ VALUE
   = ANY if KEY in D
   = NULL if KEY not in D
 ```
+
+
+## API
+
+This repository provides a lightweight implementation of a PBG interpreter. It can be incorporated into an existing project by including the single header file `pbg.h`. Complete documentation is provided in `pbg.h` but is partially reproduced here for visibility. The library reserves the `pbg_` and `PBG_` prefixes.
+
+Given a string `S` generated using the [set of rules `R`](#rules), the library converts `S` into an instance of the `pbg_expr` struct.
+
+### functions
+
+#### int pbg_istrue(char* str, int n)
+Checks if the given string represents `TRUE`. Returns 1 if so, 0 otherwise.
+
+#### int pbg_isfalse(char* str, int n)
+Checks if the given string represents `FALSE`. Returns 1 if so, 0 otherwise.
+
+#### int pbg_isnumber(char* str, int n)
+Checks if the given string represents a `NUMBER` literal. Returns 1 if so, 0 otherwise.
+
+#### int pbg_iskey(char* str, int n)
+Checks if the given string represents `[KEY]`. Returns 1 if so, 0 otherwise.
+
+#### int pbg_isstring(char* str, int n)
+Checks if the given string represents a `STRING` literal. Returns 1 if so, 0 otherwise.
+
+#### int pbg_isdate(char* str, int n)
+Checks if the given string represents a `DATE` literal. Returns 1 if so, 0 otherwise.
+
+#### int pbg_parse(pbg_expr* e, char* str, int n)
+Parses the string as a PBG expression. Returns 0 if successful, an error code if unsuccessful.
+
+#### void pbg_free(pbg_expr* e)
+Destroys the PBG expression instance and `free`'s all associated resources.
+
+#### int pbg_evaluate(pbg_expr* e)
+Evaluates the PBG expression using the provided dictionary.
+
+#### char* pbg_gets(pbg_expr* e, char** bufptr, int n)
+Prints the PBG expression to the char pointer provided. If ptr is NULL and n is 0, then this function will allocate memory on the heap which must then be `free`'d by the caller. In this way, this function behaves similarly to `fgets`.
