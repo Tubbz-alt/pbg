@@ -45,6 +45,20 @@ typedef struct {
 } pbg_expr;
 
 /**
+ * This struct represents a container/manager for a Prefix Boolean Expression.
+ * The benefit of using this struct instead of a pbg_expr directly is the 
+ * opportunity for indirection: this struct can store "global" expressions to
+ * help reduce the memory footprint of the entire tree. For example, this
+ * struct tracks all pbg_expr instances representing a KEY to avoid duplicate
+ * creation and reduced workload during KEY resolution.
+ */
+typedef struct {
+	pbg_expr*  _root;  /* Root node of the expression tree. */
+	pbg_expr*  _keys;  /* Global EXPRs for unique KEY literals that appear. */
+	int        _keyc;  /* Number of unique KEY literals. */
+} pbg_tree;
+
+/**
  * This struct represents a PBG DATE literal.
  */
 typedef struct {
