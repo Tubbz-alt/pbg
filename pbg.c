@@ -124,7 +124,15 @@ void pbg_todate(pbg_type_date* ptr, char* str, int n)
 }
 
 
-int pbg_parse_h(pbg_expr* e, char* str, int n)
+int pbg_keyhash(char* key, int n)
+{
+	int i = 0, hash = 0;
+	while(i < n) hash = 31 * hash + key[i++];
+	return hash;
+}
+
+
+int pbg_parse_h(pbg_expr* e, char* str, int n, int* keytbl, int tblsz)
 {
 	int i, j;
 	
@@ -148,7 +156,7 @@ int pbg_parse_h(pbg_expr* e, char* str, int n)
 			// TODO no arguments provided to operator
 		}
 		
-		/* Get length of each child node. */
+		/* Get string length of each child node. */
 		int* lens = (int*) calloc(e->_size+1, sizeof(int));
 		if(lens == NULL) {
 			// TODO failed to malloc enough space for array
@@ -196,7 +204,7 @@ int pbg_parse_h(pbg_expr* e, char* str, int n)
 				if(!lens[j]) {
 					// TODO no argument provided
 				}
-				int err = pbg_parse_h(children+j-1, str+i+1, lens[j]);
+				int err = pbg_parse_h(children+j-1, str+i+1, lens[j], keytbl, tblsz);
 				if(err) {
 					// TODO error in child
 				}
@@ -210,6 +218,12 @@ int pbg_parse_h(pbg_expr* e, char* str, int n)
 	}else{
 		/* KEY. Copy key identifier into string. */
 		if(pbg_iskey(str, n)) {
+			int index = pbg_keyhash(str, n) % tblsz;
+			while(keytbl[index] != -1) index++;
+			// TODO check if key already exists in table
+			// TODO give recursive calls access to tree data structure
+			
+			
 			e->_size = (n-2) * sizeof(char);
 			e->_data = malloc(e->_size);
 			if(e->_data == NULL) {
