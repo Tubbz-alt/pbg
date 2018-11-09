@@ -32,31 +32,31 @@ typedef enum {
 	PBG_OP_LTE,   // <=
 	PBG_OP_GTE,   // >=
 	PBG_MAX_OP    // END OF OPS!
-} pbg_expr_type;
+} pbg_node_type;
 
 /**
  * This struct represents a Prefix Boolean Expression. The value of the
  * operator constrains both the number of children and the type of children.
  */
 typedef struct {
-	pbg_expr_type  _type;  /* Node type, determines the type/size of data. */
+	pbg_node_type  _type;  /* Node type, determines the type/size of data. */
 	void*          _data;  /* Arbitrary data! */
 	int            _size;  /* Number of things in _data. Determined by type. */
-} pbg_expr;
+} pbg_expr_node;
 
 /**
  * This struct represents a container/manager for a Prefix Boolean Expression.
- * The benefit of using this struct instead of a pbg_expr directly is the 
+ * The benefit of using this struct instead of a pbg_expr_node directly is the 
  * opportunity for indirection: this struct can store "global" expressions to
  * help reduce the memory footprint of the entire tree. For example, this
- * struct tracks all pbg_expr instances representing a KEY to avoid duplicate
+ * struct tracks all pbg_expr_node instances representing a KEY to avoid duplicate
  * creation and reduced workload during KEY resolution.
  */
 typedef struct {
-	pbg_expr*  _root;  /* Root node of the expression tree. */
-	pbg_expr*  _keys;  /* Global EXPRs for unique KEY literals that appear. */
-	int        _keyc;  /* Number of unique KEY literals. */
-} pbg_tree;
+	pbg_expr_node*  _root;  /* Root node of the expression tree. */
+//	pbg_expr_node*  _keys;  /* Global EXPRs for unique KEY literals that appear. */
+//	int             _keyc;  /* Number of unique KEY literals. */
+} pbg_expr;
 
 /**
  * This struct represents a PBG DATE literal.
@@ -75,7 +75,7 @@ typedef struct {
  * @param n   Length of string to parse.
  * @param PBG_UNKNOWN if parsing fails, PBG_OP_* if success.
  */
-void pbg_toop(pbg_expr_type* op, char* str, int n);
+void pbg_toop(pbg_node_type* op, char* str, int n);
 
 /**
  * Checks if the given string encodes a valid PBG TRUE literal.
@@ -150,9 +150,12 @@ void pbg_free(pbg_expr* e);
 
 /**
  * Evaluates the Prefix Boolean Expression with the provided assignments.
- * @param e PBG expression to evaluate.
+ * @param e    PBG expression to evaluate.
+ * @param dict Dictionary used to resolve KEY names.
+ * @return 1 if the PBG expression evaluates to true with the given dictionary. 
+ *         0 otherwise.
  */
-void pbg_evaluate(pbg_expr* e);
+int pbg_evaluate(pbg_expr* e, pbg_expr* (*dict)(char*, int));
 
 /**
  * Prints the Prefix Boolean Expression to the char pointer provided. If ptr is

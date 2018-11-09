@@ -4,7 +4,7 @@
 #include <string.h>
 
 
-void pbg_toop(pbg_expr_type* op, char* str, int n)
+void pbg_toop(pbg_node_type* op, char* str, int n)
 {
 	str += n;
 	if(n == 1)
@@ -131,8 +131,7 @@ int pbg_keyhash(char* key, int n)
 	return hash;
 }
 
-
-int pbg_parse_h(pbg_expr* e, char* str, int n, int* keytbl, int tblsz)
+int pbg_parse_h(pbg_expr_node* e, char* str, int n)
 {
 	int i, j;
 	
@@ -190,13 +189,13 @@ int pbg_parse_h(pbg_expr* e, char* str, int n, int* keytbl, int tblsz)
 		}
 		
 		/* Allocate space for children. */
-		e->_data = malloc(e->_size * sizeof(pbg_expr));
+		e->_data = malloc(e->_size * sizeof(pbg_expr_node));
 		if(e->_data == NULL) {
 			// TODO failed to malloc enough space for node
 		}
 		
 		/* Parse each child. */
-		pbg_expr* children = (pbg_expr*) e->_data;
+		pbg_expr_node* children = (pbg_expr_node*) e->_data;
 		for(i = 0, j = 1, depth = 0; i < n; i++)
 			if(str[i] == '(') depth++;
 			else if(str[i] == ')') depth--;
@@ -204,7 +203,7 @@ int pbg_parse_h(pbg_expr* e, char* str, int n, int* keytbl, int tblsz)
 				if(!lens[j]) {
 					// TODO no argument provided
 				}
-				int err = pbg_parse_h(children+j-1, str+i+1, lens[j], keytbl, tblsz);
+				int err = pbg_parse_h(children+j-1, str+i+1, lens[j]);
 				if(err) {
 					// TODO error in child
 				}
@@ -218,12 +217,6 @@ int pbg_parse_h(pbg_expr* e, char* str, int n, int* keytbl, int tblsz)
 	}else{
 		/* KEY. Copy key identifier into string. */
 		if(pbg_iskey(str, n)) {
-			int index = pbg_keyhash(str, n) % tblsz;
-			while(keytbl[index] != -1) index++;
-			// TODO check if key already exists in table
-			// TODO give recursive calls access to tree data structure
-			
-			
 			e->_size = (n-2) * sizeof(char);
 			e->_data = malloc(e->_size);
 			if(e->_data == NULL) {
@@ -287,15 +280,22 @@ int pbg_parse_h(pbg_expr* e, char* str, int n, int* keytbl, int tblsz)
 
 int pbg_parse(pbg_expr* e, char* str, int n)
 {
-	if((str[0] != '(' || str[n-1] != ')') && !pbg_istrue(str, n) && !pbg_isfalse(str, n)) {
+	if((str[0] != '(' || str[n-1] != ')') && !pbg_istrue(str, n) && 
+			!pbg_isfalse(str, n)) {
 		// TODO outermost unit must have a truth value
 	}
-	return pbg_parse_h(e, str, n);
+	
+	/* Initialize expression struct. */
+	e->_root = (pbg_expr_node*) malloc(sizeof(pbg_expr_node));
+	
+	/* Parse all nodes in expression. */
+	return pbg_parse_h(e->_root, str, n);
 }
 
 
-void pbg_free_r(pbg_expr* e)
+void pbg_free_r(pbg_expr_node* e)
 {
+	/* This node is a literal. Just need to free the _data. */
 	if(e->_type < PBG_MAX_LT) {
 		switch(e->_type) {
 			case PBG_LT_KEY:
@@ -305,8 +305,10 @@ void pbg_free_r(pbg_expr* e)
 				free(e->_data);
 			default: break;
 		}
+		
+	/* This node is an operator. Free all of its children and the _data. */
 	}else if(e->_type < PBG_MAX_OP) {
-		pbg_expr* children = (pbg_expr*) e->_data;
+		pbg_expr_node* children = (pbg_expr_node*) e->_data;
 		for(int i = 0; i < e->_size; i++)
 			pbg_free_r(children+i);
 		free(e->_data);
@@ -315,19 +317,91 @@ void pbg_free_r(pbg_expr* e)
 
 void pbg_free(pbg_expr* e)
 {
-	pbg_free_r(e);
+	pbg_free_r(e->_root);
 	free(e);
 }
 
 
-void pbg_evaluate(pbg_expr* e)
+int pbg_evaluate_h(pbg_expr* e, pbg_expr_node* node, pbg_expr* (*dict)(char*, int))
 {
-	
+	/* This is a literal node. */
+	if(node->_type < PBG_MAX_LT) {
+		if(node->_type == PBG_LT_TRUE) return 1;
+		if(node->_type == PBG_LT_FALSE) return 0;
+		return 0;  // TODO the only literals with truth values are TRUE and FALSE.
+		
+	/* This is an operator node. */
+	}else if(node->_type < PBG_MAX_OP) {
+		pbg_expr_node* children = (pbg_expr_node*) node->_data;
+		int size = node->_size;
+		switch(node->_type) {
+			/* NOT: invert the truth value of the contained expression. */
+				return (pbg_evaluate_h(e, (pbg_expr_node*) node->_data, dict) == 0);
+				break;
+			/* AND: true only if all subexpressions are true. */
+			case PBG_OP_AND:
+				for(int i = 0; i < size; i++)
+					if(pbg_evaluate_h(e, (pbg_expr_node*)(node->_data+i), dict) == 0)
+						return 0;
+				return 1;
+				break;
+			/* OR: true if any of the subexpressions are true. */
+			case PBG_OP_OR:
+				for(int i = 0; i < size; i++)
+					if(pbg_evaluate_h(e, (pbg_expr_node*)(node->_data+i), dict) == 1)
+						return 1;
+				return 0;
+				break;
+			/* EQ: true only all children are equal to each other. */
+			case PBG_OP_EQ:
+				for(int i = 1; i < size; i++)
+					if(children[i]._type != children[0]._type || 
+							children[i]._size != children[0]._size || 
+							strncmp(children[i]._data, children[0]._data, children[0]._size))
+						return 0;
+				return 1;
+				break;
+			/* LT: true only if the first child is less than the second. */
+			case PBG_OP_LT:
+				return *((double*)children[0]._data) < *((double*)children[1]._data);
+				break;
+			/* GT: true only if the first child is greater than the second. */
+			case PBG_OP_GT:
+				return *((double*)children[0]._data) > *((double*)children[1]._data);
+				break;
+			/* EXST: true only if the KEY exists in the given dictionary. */
+			case PBG_OP_EXST:
+				return dict((char*) node->_data, node->_size) != NULL;
+				break;
+			/* NEQ: true only if the two children are different. */
+			case PBG_OP_NEQ:
+				return children[1]._type != children[0]._type || 
+						children[1]._size != children[0]._size || 
+						strncmp(children[1]._data, children[0]._data, children[0]._size);
+				break;
+			/* LTE: true only if the first child is at most the second. */
+			case PBG_OP_LTE:
+				return *((double*)children[0]._data) <= *((double*)children[1]._data);
+				break;
+			/* GTE: true only if the first child is at least the second. */
+			case PBG_OP_GTE:
+				return *((double*)children[0]._data) >= *((double*)children[1]._data);
+				break;
+		}
+	}else{ 
+		// TODO should never get here!
+	}
+}
+
+int pbg_evaluate(pbg_expr* e, pbg_expr* (*dict)(char*, int))
+{
+	return pbg_evaluate_h(e, e->_root, dict);
 }
 
 
-int pbg_gets_r(pbg_expr* e, char* buf, int i)
+int pbg_gets_r(pbg_expr_node* e, char* buf, int i)
 {
+	/* This node is a literal. */
 	if(e->_type < PBG_MAX_LT)
 	{
 		char* data;
@@ -373,6 +447,7 @@ int pbg_gets_r(pbg_expr* e, char* buf, int i)
 				break;
 		}
 	
+	/* This node is an operator. */
 	}else if(e->_type < PBG_MAX_OP) {
 		buf[i++] = '(';
 		switch(e->_type) {
@@ -391,7 +466,7 @@ int pbg_gets_r(pbg_expr* e, char* buf, int i)
 				break;
 		}
 		buf[i++] = ',';
-		pbg_expr* children = (pbg_expr*)e->_data;
+		pbg_expr_node* children = (pbg_expr_node*)e->_data;
 		for(int j = 0; j < e->_size; j++) {
 			i = pbg_gets_r(&children[j], buf, i);
 			if(j != e->_size-1)
@@ -404,25 +479,8 @@ int pbg_gets_r(pbg_expr* e, char* buf, int i)
 
 char* pbg_gets(pbg_expr* e, char** bufptr, int n)
 {
-	char* buf = (char*) malloc(1000);
-	int len = pbg_gets_r(e, buf, 0);
+	char* buf = (char*) malloc(1000);  // TODO fix me then mix me
+	int len = pbg_gets_r(e->_root, buf, 0);
 	buf[len] = '\0';
 	return buf;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
