@@ -318,7 +318,6 @@ void pbg_free_r(pbg_expr_node* e)
 void pbg_free(pbg_expr* e)
 {
 	pbg_free_r(e->_root);
-	free(e);
 }
 
 

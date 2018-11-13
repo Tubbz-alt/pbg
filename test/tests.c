@@ -70,14 +70,24 @@ int main()
 	PBG_RESULT("pbg_isdate", result);
 	
 	/* pbg_parse */
-	pbg_expr* e = (pbg_expr*) malloc(sizeof(pbg_expr));
+	pbg_expr e;
 	char* test = "(&,(&,(&,[1],[2]),[3],[4],[5]),(&,[6],[7],[8]))";
 	int len = strlen(test);
-	pbg_parse(e, test, len);
-	char* str = pbg_gets(e, NULL, 0);
+	pbg_parse(&e, test, len);
+	char* str = pbg_gets(&e, NULL, 0);
 	printf("%s\n", str);
 	free(str);
-	pbg_free(e);
+	pbg_free(&e);
+	
+	/* pbg_evaluate */
+	char* testeval = "(>,2,2)";
+	len = strlen(testeval);
+	pbg_parse(&e, testeval, len);
+	str = pbg_gets(&e, NULL, 0);
+	printf("%s\n", str);
+	free(str);
+	pbg_free(&e);
+	
 	
 	return 0;
 }
