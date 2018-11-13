@@ -80,11 +80,13 @@ int main()
 	pbg_free(&e);
 	
 	/* pbg_evaluate */
-	char* testeval = "(>,2,2)";
+	char* testeval = "(=,3,2)";
 	len = strlen(testeval);
 	pbg_parse(&e, testeval, len);
 	str = pbg_gets(&e, NULL, 0);
 	printf("%s\n", str);
+	int eval = pbg_evaluate(&e, NULL);
+	printf("result: %d\n", eval);
 	free(str);
 	pbg_free(&e);
 	

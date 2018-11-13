@@ -242,10 +242,7 @@ int pbg_parse_h(pbg_expr_node* e, char* str, int n)
 			if(e->_data == NULL) {
 				// TODO failed to allocate memory for node
 			}
-			char old = str[n];  // numbers are always folloed by other chars
-			str[n] = '\0';
 			*((double*)e->_data) = atof(str);
-			str[n] = old;
 			e->_type = PBG_LT_NUMBER;
 		
 		/* STRING. Copy everything between single quotes. */
@@ -440,6 +437,9 @@ int pbg_gets_r(pbg_expr_node* e, char* buf, int i)
 				for(int j = 0; j < e->_size; j++)
 					buf[i++] = data[j];
 				buf[i++] = ']';
+				break;
+			case PBG_LT_NUMBER:
+				i += sprintf(buf+i, "%.2lf", *((double*)e->_data));
 				break;
 			default:
 				// TODO unknown operator!
