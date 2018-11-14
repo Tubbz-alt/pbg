@@ -112,6 +112,7 @@ Prints the PBG expression to the char pointer provided. If ptr is NULL and n is 
 
 This project is still a work-in-progress. Updates will be forthcoming. 
 -  Implement `pbg_evaluate`. How can an explicit dictionary representation be avoided?
+   + Basic implementation provided for pbg_evaluate. KEY literals are not yet resolved via dictionary lookup.
 -  Add error handling!
 -  Fix `pbg_gets`: short-circuit evaluation once buffer is full, restore `gets`-like behavior and size buffer precisely.
 -  Re-add whitespace insensitivity.
