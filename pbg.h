@@ -169,4 +169,7 @@ int pbg_evaluate(pbg_expr* e, pbg_expr* (*dict)(char*, int));
  */
 char* pbg_gets(pbg_expr* e, char** bufptr, int n);
 
+
+void pbg_print(pbg_expr* e);
+
 #endif  /* __PBG_H__ */

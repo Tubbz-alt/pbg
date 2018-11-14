@@ -493,3 +493,59 @@ char* pbg_gets(pbg_expr* e, char** bufptr, int n)
 	buf[len] = '\0';
 	return buf;
 }
+
+void pbg_print_h(pbg_expr_node* node, int depth)
+{
+	for(int i = 0; i < depth; i++)
+		printf("  ");
+	if(node->_type < PBG_MAX_LT) {
+		pbg_type_date* date;
+		switch(node->_type) {
+			case PBG_LT_TRUE:
+				printf("TRUE\n");
+				break;
+			case PBG_LT_FALSE:
+				printf("FALSE\n");
+				break;
+			case PBG_LT_NUMBER:
+				printf("NUMBER : %lf\n", *((double*)node->_data));
+				break;
+			case PBG_LT_STRING:
+				printf("STRING : '%s'\n", (char*)node->_data);
+				break;
+			case PBG_LT_DATE:
+				date = (pbg_type_date*)node->_data;
+				printf("DATE : %4d-%2d-%2d\n", date->_YYYY, date->_MM, date->_DD);
+				break;
+			case PBG_LT_KEY:
+				printf("KEY : [%s]\n", (char*)node->_data);
+				break;
+			default:
+				printf("UNKNWON LT\n");
+				break;
+		}
+	}else if(node->_type < PBG_MAX_OP) {
+		switch(node->_type) {
+			case PBG_OP_NOT: printf("NOT !\n"); break;
+			case PBG_OP_AND: printf("AND &\n"); break;
+			case PBG_OP_OR: printf("OR |\n"); break;
+			case PBG_OP_EQ: printf("EQ =\n"); break;
+			case PBG_OP_LT: printf("LT <\n"); break;
+			case PBG_OP_GT: printf("GT >\n"); break;
+			case PBG_OP_EXST: printf("EXIST ?\n"); break;
+			case PBG_OP_NEQ: printf("NEQ !=\n"); break;
+			case PBG_OP_LTE: printf("LTE <=\n"); break;
+			case PBG_OP_GTE: printf("GTE >=\n"); break;
+			default: printf("UNKNOWN OP\n");
+		}
+		int i = 0, size = node->_size;
+		pbg_expr_node* children = (pbg_expr_node*)node->_data;
+		while(i != size)
+			pbg_print_h(children+i++, depth+1);
+	}
+}
+
+void pbg_print(pbg_expr* e)
+{
+	pbg_print_h(e->_root, 0);
+}

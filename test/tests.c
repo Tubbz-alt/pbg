@@ -19,9 +19,9 @@ int test_pbg_evaluate(char* str, int expected)
 	pbg_expr e;
 	pbg_parse(&e, str, strlen(str));
 	int result = pbg_evaluate(&e, NULL) != expected;
-	pbg_free(&e);
 	if(result == 1)
 		printf("failed: \"%s\", expected=%d\n", str, expected);
+	pbg_free(&e);
 	return result;
 }
 
@@ -31,6 +31,19 @@ int test_pbg_parse(char* str)
 	pbg_parse(&e, str, strlen(str));
 	char* getstr = pbg_gets(&e, NULL, 0);
 	printf("%s\n", getstr);
+	free(getstr);
+	pbg_free(&e);
+}
+
+int test_pbg_print(char* str) 
+{
+	pbg_expr e;
+	pbg_parse(&e, str, strlen(str));
+	char* getstr = pbg_gets(&e, NULL, 0);
+	printf("given: %s\n", str);
+	printf("parse: %s\n", getstr);
+	printf("parse tree:\n");
+	pbg_print(&e);
 	free(getstr);
 	pbg_free(&e);
 }
@@ -156,6 +169,8 @@ int main()
 	result += test_pbg_evaluate("(>=,3,-3)", 1);
 	result += test_pbg_evaluate("(>=,-3,3)", 0);
 	PBG_RESULT("pbg_evaluate", result);
+	
+	test_pbg_print("(>=,2,3)");
 	
 	return 0;
 }
