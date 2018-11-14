@@ -53,9 +53,10 @@ typedef struct {
  * creation and reduced workload during KEY resolution.
  */
 typedef struct {
-	pbg_expr_node*  _root;  /* Root node of the expression tree. */
-//	pbg_expr_node*  _keys;  /* Global EXPRs for unique KEY literals that appear. */
-//	int             _keyc;  /* Number of unique KEY literals. */
+	pbg_expr_node*  _root;   /* Root node of the expression tree. */
+	pbg_expr_node*  _keys;   /* Global EXPRs for unique KEY literals that appear. */
+	int             _keysz;  /* Allocated size (in # nodes) of _keys. */
+	int             _keyc;   /* Number of non-NULL nodes in _keys. */
 } pbg_expr;
 
 /**
