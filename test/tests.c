@@ -14,6 +14,27 @@ int test_pbg_istype(int (*pbg_func)(char*,int), char* str, int expected)
 	return result;
 }
 
+int test_pbg_evaluate(char* str, int expected)
+{
+	pbg_expr e;
+	pbg_parse(&e, str, strlen(str));
+	int result = pbg_evaluate(&e, NULL) != expected;
+	pbg_free(&e);
+	if(result == 1)
+		printf("failed: \"%s\", expected=%d\n", str, expected);
+	return result;
+}
+
+int test_pbg_parse(char* str)
+{
+	pbg_expr e;
+	pbg_parse(&e, str, strlen(str));
+	char* getstr = pbg_gets(&e, NULL, 0);
+	printf("%s\n", getstr);
+	free(getstr);
+	pbg_free(&e);
+}
+
 
 int main()
 {
@@ -51,10 +72,11 @@ int main()
 	result += test_pbg_istype(pbg_isnumber, "0.123a45", 0);
 	result += test_pbg_istype(pbg_isnumber, "0.0.1", 0);
 	result += test_pbg_istype(pbg_isnumber, "0.0", 1);
-	result += test_pbg_istype(pbg_isnumber, "e10", 1);
-	result += test_pbg_istype(pbg_isnumber, ".0", 1);
+	result += test_pbg_istype(pbg_isnumber, "e10", 0);
+	result += test_pbg_istype(pbg_isnumber, ".0", 0);
 	result += test_pbg_istype(pbg_isnumber, "0e10", 1);
 	result += test_pbg_istype(pbg_isnumber, "0e", 0);
+	result += test_pbg_istype(pbg_isnumber, "'hi'", 0);
 	PBG_RESULT("pbg_isnumber", result);
 	
 	/* pbg_iskey */
@@ -70,26 +92,70 @@ int main()
 	PBG_RESULT("pbg_isdate", result);
 	
 	/* pbg_parse */
-	pbg_expr e;
-	char* test = "(&,(&,(&,[1],[2]),[3],[4],[5]),(&,[6],[7],[8]))";
-	int len = strlen(test);
-	pbg_parse(&e, test, len);
-	char* str = pbg_gets(&e, NULL, 0);
-	printf("%s\n", str);
-	free(str);
-	pbg_free(&e);
+	result = 0;
+//	test_pbg_parse("(&,TRUE,TRUE)");
+	PBG_RESULT("pbg_parse", result);
 	
 	/* pbg_evaluate */
-	char* testeval = "(=,3,2)";
-	len = strlen(testeval);
-	pbg_parse(&e, testeval, len);
-	str = pbg_gets(&e, NULL, 0);
-	printf("%s\n", str);
-	int eval = pbg_evaluate(&e, NULL);
-	printf("result: %d\n", eval);
-	free(str);
-	pbg_free(&e);
-	
+	result = 0;
+	/* NOT */
+	result += test_pbg_evaluate("(!,FALSE)", 1);
+	result += test_pbg_evaluate("(!,TRUE)", 0);
+	result += test_pbg_evaluate("(!,(=,10,10))", 0);
+	result += test_pbg_evaluate("(!,(=,9,10))", 1);
+	result += test_pbg_evaluate("(!,(!,(=,9,10)))", 0);
+	/* AND */
+	result += test_pbg_evaluate("(&,TRUE,TRUE)", 1);
+	result += test_pbg_evaluate("(&,TRUE,FALSE)", 0);
+	result += test_pbg_evaluate("(&,FALSE,TRUE)", 0);
+	result += test_pbg_evaluate("(&,FALSE,FALSE)", 0);
+	/* OR */
+	result += test_pbg_evaluate("(|,TRUE,TRUE)", 1);
+	result += test_pbg_evaluate("(|,TRUE,FALSE)", 1);
+	result += test_pbg_evaluate("(|,FALSE,TRUE)", 1);
+	result += test_pbg_evaluate("(|,FALSE,FALSE)", 0);
+	/* EQUAL */
+	result += test_pbg_evaluate("(=,10,10)", 1);
+	result += test_pbg_evaluate("(=,9,10)", 0);
+	result += test_pbg_evaluate("(=,10,9)", 0);
+	result += test_pbg_evaluate("(=,'hi',9)", 0);
+	result += test_pbg_evaluate("(=,-10,'hi')", 0);
+	result += test_pbg_evaluate("(=,-10,-10)", 1);
+	result += test_pbg_evaluate("(=,'hi','hi')", 1);
+	result += test_pbg_evaluate("(=,'hia','hi')", 0);
+	result += test_pbg_evaluate("(=,'hi','h ')", 0);
+	result += test_pbg_evaluate("(=,2018-10-12,'h ')", 0);
+	result += test_pbg_evaluate("(=,2018-10-12,2018-10-12)", 1);
+	result += test_pbg_evaluate("(=,2018-10-12,2018-10-13)", 0);
+	result += test_pbg_evaluate("(=,2018-10-13,2018-10-12)", 0);
+	result += test_pbg_evaluate("(=,2018-10-13,2017-10-13)", 0);
+	result += test_pbg_evaluate("(=,2018-10-13,2018-11-13)", 0);
+	result += test_pbg_evaluate("(=,[ab],[ab])", 1);
+	result += test_pbg_evaluate("(=,[ab],[ac])", 0);
+	result += test_pbg_evaluate("(=,[abc],[ab])", 0);
+	result += test_pbg_evaluate("(=,TRUE,TRUE)", 1);
+	result += test_pbg_evaluate("(=,TRUE,FALSE)", 0);
+	result += test_pbg_evaluate("(=,FALSE,TRUE)", 0);
+	result += test_pbg_evaluate("(=,FALSE,FALSE)", 1);
+	/* LESS THAN */
+	result += test_pbg_evaluate("(<,2,3)", 1);
+	result += test_pbg_evaluate("(<,3,3)", 0);
+	result += test_pbg_evaluate("(<,-3,3)", 1);
+	/* GREATER THAN */
+	result += test_pbg_evaluate("(>,3,2)", 1);
+	result += test_pbg_evaluate("(>,3,3)", 0);
+	result += test_pbg_evaluate("(>,3,-3)", 1);
+	/* LESS THAN OR EQUAL */
+	result += test_pbg_evaluate("(<=,2,3)", 1);
+	result += test_pbg_evaluate("(<=,3,3)", 1);
+	result += test_pbg_evaluate("(<=,-3,3)", 1);
+	result += test_pbg_evaluate("(<=,3,-3)", 0);
+	/* GREATER THAN OR EQUAL */
+	result += test_pbg_evaluate("(>=,3,2)", 1);
+	result += test_pbg_evaluate("(>=,3,3)", 1);
+	result += test_pbg_evaluate("(>=,3,-3)", 1);
+	result += test_pbg_evaluate("(>=,-3,3)", 0);
+	PBG_RESULT("pbg_evaluate", result);
 	
 	return 0;
 }

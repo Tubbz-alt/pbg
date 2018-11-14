@@ -6,9 +6,9 @@
 
 void pbg_toop(pbg_node_type* op, char* str, int n)
 {
-	str += n;
+	str += 1;
 	if(n == 1)
-		     if(str[0] == '!') *op = PBG_OP_NOT;
+		if(str[0] == '!')      *op = PBG_OP_NOT;
 		else if(str[0] == '&') *op = PBG_OP_AND;
 		else if(str[0] == '|') *op = PBG_OP_OR;
 		else if(str[0] == '=') *op = PBG_OP_EQ;
@@ -16,7 +16,7 @@ void pbg_toop(pbg_node_type* op, char* str, int n)
 		else if(str[0] == '>') *op = PBG_OP_GT;
 		else if(str[0] == '?') *op = PBG_OP_EXST;
 	else if(n == 2)
-		     if(str[0] == '!' && str[1] == '=') *op = PBG_OP_NEQ;
+		if(str[0] == '!' && str[1] == '=')      *op = PBG_OP_NEQ;
 		else if(str[0] == '<' && str[1] == '=') *op = PBG_OP_LTE;
 		else if(str[0] == '>' && str[1] == '=') *op = PBG_OP_GTE;
 	else
@@ -53,6 +53,9 @@ int pbg_isnumber(char* str, int n)
 	
 	/* Check if negative or positive */
 	if(str[i] == '-' || str[i] == '+') i++;
+	/* Otherwise, ensure first character is a digit. */
+	else if(!is_a_digit(str[i]))
+		return 0;
 	
 	/* Parse everything before the dot. */
 	if(str[i] != '0' && is_a_digit(str[i])) {
@@ -332,29 +335,36 @@ int pbg_evaluate_h(pbg_expr* e, pbg_expr_node* node, pbg_expr* (*dict)(char*, in
 		int size = node->_size;
 		switch(node->_type) {
 			/* NOT: invert the truth value of the contained expression. */
+			case PBG_OP_NOT:
 				return (pbg_evaluate_h(e, (pbg_expr_node*) node->_data, dict) == 0);
 				break;
 			/* AND: true only if all subexpressions are true. */
 			case PBG_OP_AND:
 				for(int i = 0; i < size; i++)
-					if(pbg_evaluate_h(e, (pbg_expr_node*)(node->_data+i), dict) == 0)
+					if(pbg_evaluate_h(e, ((pbg_expr_node*)node->_data)+i, dict) == 0)
 						return 0;
 				return 1;
 				break;
 			/* OR: true if any of the subexpressions are true. */
 			case PBG_OP_OR:
 				for(int i = 0; i < size; i++)
-					if(pbg_evaluate_h(e, (pbg_expr_node*)(node->_data+i), dict) == 1)
+					if(pbg_evaluate_h(e, ((pbg_expr_node*)node->_data)+i, dict) == 1)
 						return 1;
 				return 0;
 				break;
 			/* EQ: true only all children are equal to each other. */
 			case PBG_OP_EQ:
+				/* Ensure type and size of all children are identical. */
 				for(int i = 1; i < size; i++)
 					if(children[i]._type != children[0]._type || 
-							children[i]._size != children[0]._size || 
-							strncmp(children[i]._data, children[0]._data, children[0]._size))
+							children[i]._size != children[0]._size)
 						return 0;
+						
+					/* Ensure each data byte is identical. */
+				for(int i = 1; i < size; i++)
+					for(int j = 0; j < children[0]._size; j++)
+						if(((char*)children[0]._data)[j] != ((char*)children[i]._data)[j])
+							return 0;
 				return 1;
 				break;
 			/* LT: true only if the first child is less than the second. */
