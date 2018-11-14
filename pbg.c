@@ -6,7 +6,6 @@
 
 void pbg_toop(pbg_node_type* op, char* str, int n)
 {
-	str += 1;
 	if(n == 1)
 		if(str[0] == '!')      *op = PBG_OP_NOT;
 		else if(str[0] == '&') *op = PBG_OP_AND;
@@ -15,10 +14,12 @@ void pbg_toop(pbg_node_type* op, char* str, int n)
 		else if(str[0] == '<') *op = PBG_OP_LT;
 		else if(str[0] == '>') *op = PBG_OP_GT;
 		else if(str[0] == '?') *op = PBG_OP_EXST;
+		else *op = PBG_UNKNOWN;
 	else if(n == 2)
 		if(str[0] == '!' && str[1] == '=')      *op = PBG_OP_NEQ;
 		else if(str[0] == '<' && str[1] == '=') *op = PBG_OP_LTE;
 		else if(str[0] == '>' && str[1] == '=') *op = PBG_OP_GTE;
+		else *op = PBG_UNKNOWN;
 	else
 		*op = PBG_UNKNOWN;
 }
@@ -174,7 +175,7 @@ int pbg_parse_h(pbg_expr_node* e, char* str, int n)
 		}
 		
 		/* Parse the operator. */
-		pbg_toop(&(e->_type), str, lens[0]);
+		pbg_toop(&(e->_type), str+1, lens[0]);
 		if(e->_type == PBG_UNKNOWN) {
 			// TODO unsupported operation
 		}
@@ -511,14 +512,20 @@ void pbg_print_h(pbg_expr_node* node, int depth)
 				printf("NUMBER : %lf\n", *((double*)node->_data));
 				break;
 			case PBG_LT_STRING:
-				printf("STRING : '%s'\n", (char*)node->_data);
+				printf("STRING : '");
+				for(int i = 0; i < node->_size; i++)
+					printf("%c", ((char*)node->_data)[i]);
+				printf("'\n");
 				break;
 			case PBG_LT_DATE:
 				date = (pbg_type_date*)node->_data;
 				printf("DATE : %4d-%2d-%2d\n", date->_YYYY, date->_MM, date->_DD);
 				break;
 			case PBG_LT_KEY:
-				printf("KEY : [%s]\n", (char*)node->_data);
+				printf("KEY : [");
+				for(int i = 0; i < node->_size; i++)
+					printf("%c", ((char*)node->_data)[i]);
+				printf("]\n");
 				break;
 			default:
 				printf("UNKNWON LT\n");
@@ -536,7 +543,7 @@ void pbg_print_h(pbg_expr_node* node, int depth)
 			case PBG_OP_NEQ: printf("NEQ !=\n"); break;
 			case PBG_OP_LTE: printf("LTE <=\n"); break;
 			case PBG_OP_GTE: printf("GTE >=\n"); break;
-			default: printf("UNKNOWN OP\n");
+			default: printf("UNKNOWN OP\n"); break;
 		}
 		int i = 0, size = node->_size;
 		pbg_expr_node* children = (pbg_expr_node*)node->_data;

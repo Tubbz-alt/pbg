@@ -48,6 +48,16 @@ int test_pbg_print(char* str)
 	pbg_free(&e);
 }
 
+int test_pbg_toop(char* str, pbg_node_type expected)
+{
+	pbg_node_type op;
+	pbg_toop(&op, str, strlen(str));
+	int result = op != expected;
+	if(result == 1)
+		printf("failed: \"%s\", expected=%d, got=%d\n", str, expected, op);
+	return result;
+}
+
 
 int main()
 {
@@ -103,6 +113,20 @@ int main()
 	/* pbg_isdate */
 	result = 0;
 	PBG_RESULT("pbg_isdate", result);
+	
+	/* pbg_toop */
+	result = 0;
+	result += test_pbg_toop("!", PBG_OP_NOT);
+	result += test_pbg_toop("&", PBG_OP_AND);
+	result += test_pbg_toop("|", PBG_OP_OR);
+	result += test_pbg_toop("=", PBG_OP_EQ);
+	result += test_pbg_toop("<", PBG_OP_LT);
+	result += test_pbg_toop(">", PBG_OP_GT);
+	result += test_pbg_toop("?", PBG_OP_EXST);
+	result += test_pbg_toop("!=", PBG_OP_NEQ);
+	result += test_pbg_toop(">=", PBG_OP_GTE);
+	result += test_pbg_toop("<=", PBG_OP_LTE);
+	PBG_RESULT("pbg_toop", result);
 	
 	/* pbg_parse */
 	result = 0;
@@ -169,8 +193,6 @@ int main()
 	result += test_pbg_evaluate("(>=,3,-3)", 1);
 	result += test_pbg_evaluate("(>=,-3,3)", 0);
 	PBG_RESULT("pbg_evaluate", result);
-	
-	test_pbg_print("(>=,2,3)");
 	
 	return 0;
 }
