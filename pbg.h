@@ -6,6 +6,8 @@
 #ifndef __PBG_H__
 #define __PBG_H__
 
+#include <stdint.h>
+
 /**
  * These are the PBG operators supported by this implementation. They can be
  * cross-referenced with the grammar pseudocode above. Note: some values are
@@ -40,8 +42,8 @@ typedef enum {
  */
 typedef struct {
 	pbg_node_type  _type;  /* Node type, determines the type/size of data. */
+	int            _int;   /* Type determines what this is used for! */
 	void*          _data;  /* Arbitrary data! */
-	int            _size;  /* Number of things in _data. Determined by type. */
 } pbg_expr_node;
 
 /**
@@ -53,10 +55,10 @@ typedef struct {
  * creation and reduced workload during KEY resolution.
  */
 typedef struct {
-	pbg_expr_node*  _root;   /* Root node of the expression tree. */
-	pbg_expr_node*  _keys;   /* Global EXPRs for unique KEY literals that appear. */
-	int             _keysz;  /* Allocated size (in # nodes) of _keys. */
-	int             _keyc;   /* Number of non-NULL nodes in _keys. */
+	pbg_expr_node*  _static;     /* Static nodes (read: not KEYs). */
+	pbg_expr_node*  _dynamic;    /* Dynamic nodes (read: KEYs). */
+	int             _staticsz;   /* Number of static nodes. */
+	int             _dynamicsz;  /* Number of dynamic nodes. */
 } pbg_expr;
 
 /**
@@ -76,7 +78,7 @@ typedef struct {
  * @param n   Length of string to parse.
  * @param PBG_UNKNOWN if parsing fails, PBG_OP_* if success.
  */
-void pbg_toop(pbg_node_type* op, char* str, int n);
+pbg_node_type pbg_toop(char* str, int n);
 
 /**
  * Checks if the given string encodes a valid PBG TRUE literal.

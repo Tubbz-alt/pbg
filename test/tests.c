@@ -50,8 +50,7 @@ int test_pbg_print(char* str)
 
 int test_pbg_toop(char* str, pbg_node_type expected)
 {
-	pbg_node_type op;
-	pbg_toop(&op, str, strlen(str));
+	pbg_node_type op = pbg_toop(str, strlen(str));
 	int result = op != expected;
 	if(result == 1)
 		printf("failed: \"%s\", expected=%d, got=%d\n", str, expected, op);
@@ -130,7 +129,7 @@ int main()
 	
 	/* pbg_parse */
 	result = 0;
-//	test_pbg_parse("(&,TRUE,TRUE)");
+	test_pbg_parse("(&,TRUE,TRUE)");
 	PBG_RESULT("pbg_parse", result);
 	
 	/* pbg_evaluate */
