@@ -205,8 +205,9 @@ int2ret pbg_parse_r(pbg_expr* e, char* str, int* fields, int* lengths, int* clos
 		/* KEY. Copy key identifier into string. */
 		if(pbg_iskey(str, n)) {
 			/* Dynamic nodes have negative indices. */
-			ret.nodeidx = -(e->_dynamicsz++);
-			node = e->_dynamic + ret.nodeidx;
+			/* Subtract 1 to offset first element to -1 from 0. */
+			ret.nodeidx = -(e->_dynamicsz++)-1;
+			node = e->_dynamic - (ret.nodeidx+1);
 			node->_type = PBG_LT_KEY;
 			node->_int = (n-2) * sizeof(char);
 			node->_data = malloc(node->_int);
@@ -311,13 +312,13 @@ int pbg_parse(pbg_expr* e, char* str, int n)
 	
 	/* Compute position and lengths of each field & position of closings. */
 	fields[0] = (str[0] == '(') ? 1 : 0;
-	for(int i=fields[0], c=0, f=0; i < n; i++) {
+	for(int i=fields[0], c=0, f=0, open=1; i < n; i++) {
 		if(str[i] == ')')
 			closings[c] = i;
-		if(str[i] == ')' || str[i] == ',')
-			lengths[f] = i - fields[f++];
-		if(str[i] == '(' || (str[i] == ',' && str[i+1] != '('))
-			fields[f] = i+1;
+		if(open && (str[i] == ')' || (str[i] == ',' && str[i-1] != ')')))
+			lengths[f] = i - fields[f], f++, open = 0;
+		if(!open && (str[i] == '(' || (str[i] == ',' && str[i+1] != '(')))
+			fields[f] = i+1, open = 1;
 	}
 	fields[numfields] = -1;
 	
@@ -327,11 +328,12 @@ int pbg_parse(pbg_expr* e, char* str, int n)
 	
 	/* Recursively parse the expression string to build the expression tree. */
 	e->_staticsz = 0;
-	e->_dynamicsz = 1;
+	e->_dynamicsz = 0;
 	pbg_parse_r(e, str, fields, lengths, closings, (int2arg) { 0, 0 });
 	
 	/* Clean up! */
 	free(fields);
+	free(lengths);
 	free(closings);
 }
 
