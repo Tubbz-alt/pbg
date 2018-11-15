@@ -211,6 +211,10 @@ int2ret pbg_parse_r(pbg_expr* e, char* str, int* fields, int* lengths, int* clos
 			node->_type = PBG_LT_KEY;
 			node->_int = (n-2) * sizeof(char);
 			node->_data = malloc(node->_int);
+			if(node->_data == NULL) {
+				// TODO failed to allocate memory for node
+			}
+			strncpy((char*)node->_data, str+1, n-2);
 			
 		/* DATE. Convert to PBG DATE constant. */
 		}else if(pbg_isdate(str, n)) {
@@ -357,15 +361,102 @@ void pbg_free(pbg_expr* e)
 	free(e->_dynamic);
 }
 
-
-int pbg_evaluate_h(pbg_expr* e, pbg_expr* (*dict)(char*, int))
+pbg_expr_node* get_child(pbg_expr* e, int child)
 {
-	return 0;
+	if(child < 0)
+		return e->_dynamic + -(child+1);
+	else
+		return e->_static + child;
+}
+
+int pbg_evaluate_r(pbg_expr* e, pbg_expr_node* node, pbg_expr* (*dict)(char*, int))
+{
+	/* This is a literal node. */
+	if(node->_type < PBG_MAX_LT) {
+		if(node->_type == PBG_LT_TRUE)  return 1;
+		if(node->_type == PBG_LT_FALSE) return 0;
+		return 0;  // TODO the only literals with truth values are TRUE and FALSE.
+		
+	/* This is an operator node. */
+	}else if(node->_type < PBG_MAX_OP) {
+		int* children = (int*) node->_data;
+		int size = node->_int;
+		pbg_expr_node* child0, *child1, *childi;
+		child0 = get_child(e, children[0]);
+		child1 = get_child(e, children[1]);
+		switch(node->_type) {
+			/* NOT: invert the truth value of the contained expression. */
+			case PBG_OP_NOT:
+				return (pbg_evaluate_r(e, e->_static + children[0], dict) == 0);
+				break;
+			/* AND: true only if all subexpressions are true. */
+			case PBG_OP_AND:
+				for(int i = 0; i < size; i++)
+					if(pbg_evaluate_r(e, e->_static + children[i], dict) == 0)
+						return 0;
+				return 1;
+				break;
+			/* OR: true if any of the subexpressions are true. */
+			case PBG_OP_OR:
+				for(int i = 0; i < size; i++)
+					if(pbg_evaluate_r(e, e->_static + children[i], dict) == 1)
+						return 1;
+				return 0;
+				break;
+			/* EQ: true only all children are equal to each other. */
+			case PBG_OP_EQ:
+				/* Ensure type and size of all children are identical. */
+				for(int i = 1; i < size; i++) {
+					childi = get_child(e, children[i]);
+					if(childi->_type != child0->_type || 
+							childi->_int != child0->_int)
+						return 0;
+				}
+				
+				/* Ensure each data byte is identical. */
+				for(int i = 1; i < size; i++)
+					for(int j = 0; j < child0->_int; j++) {
+						childi = get_child(e, children[i]);
+						if(((char*)child0->_data)[j] != ((char*)childi->_data)[j])
+							return 0;
+					}
+				return 1;
+				break;
+			/* LT: true only if the first child is less than the second. */
+			case PBG_OP_LT:
+				return *((double*)child0->_data) < *((double*)child1->_data);
+				break;
+			/* GT: true only if the first child is greater than the second. */
+			case PBG_OP_GT:
+				return *((double*)child0->_data) > *((double*)child1->_data);
+				break;
+			/* EXST: true only if the KEY exists in the given dictionary. */
+			case PBG_OP_EXST:
+				return dict((char*) node->_data, node->_int) != NULL;
+				break;
+			/* NEQ: true only if the two children are different. */
+			case PBG_OP_NEQ:
+				return child1->_type != child0->_type || 
+						child1->_int != child0->_int || 
+						strncmp(child1->_data, child0->_data, child0->_int);
+				break;
+			/* LTE: true only if the first child is at most the second. */
+			case PBG_OP_LTE:
+				return *((double*)child0->_data) <= *((double*)child1->_data);
+				break;
+			/* GTE: true only if the first child is at least the second. */
+			case PBG_OP_GTE:
+				return *((double*)child0->_data) >= *((double*)child1->_data);
+				break;
+		}
+	}else{
+		// TODO should never get here!
+	}
 }
 
 int pbg_evaluate(pbg_expr* e, pbg_expr* (*dict)(char*, int))
 {
-	return pbg_evaluate_h(e, dict);
+	return pbg_evaluate_r(e, e->_static, dict);
 }
 
 
