@@ -532,9 +532,7 @@ int pbg_gets_r(pbg_expr* e, pbg_expr_node* node, char* buf, int i)
 		buf[i++] = ',';
 		int* children = (int*)node->_data;
 		for(int j = 0; j < node->_int; j++) {
-			pbg_expr_node* child;
-			if(children[j] < 0) child = e->_dynamic + (-children[j] - 1);
-			else child = e->_static + children[j];
+			pbg_expr_node* child = get_child(e, children[j]);
 			i = pbg_gets_r(e, child, buf, i);
 			if(j != node->_int-1)
 				buf[i++] = ',';
