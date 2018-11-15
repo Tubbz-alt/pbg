@@ -1,7 +1,7 @@
 # pbg
 (Prefix Boolean Grammar) A simple grammar for writing boolean expressions implemented in a small, portable C library.
 
-[about](#about) | [goals](#goals) | [definition](#definition) | [API](#API) | [status](#status)
+[about](#about) | [goals](#goals) | [definition](#definition) | [API](#API) | [can I use it?](#can-I-use-it?)
 
 
 ## about
@@ -108,11 +108,12 @@ Evaluates the PBG expression using the provided dictionary.
 Prints the PBG expression to the char pointer provided. If ptr is NULL and n is 0, then this function will allocate memory on the heap which must then be `free`'d by the caller. In this way, this function behaves similarly to `fgets`.
 
 
-## status
+## can I use it?
 
 This project is still a work-in-progress. Updates will be forthcoming. 
--  Implement `pbg_evaluate`. How can an explicit dictionary representation be avoided?
-   + Basic implementation provided for pbg_evaluate. KEY literals are not yet resolved via dictionary lookup.
--  Add error handling!
--  Fix `pbg_gets`: short-circuit evaluation once buffer is full, restore `gets`-like behavior and size buffer precisely.
--  Re-add whitespace insensitivity.
+-  [x] Implement `pbg_evaluate`. How can an explicit dictionary representation be avoided?
+   + 2018-11-14: Basic implementation provided for pbg_evaluate. KEY literals are not yet resolved via dictionary lookup.
+   + 2018-11-15: `pbg_evaluate` now fully functional. KEY resolution is achieved via a user-defined function.
+-  [ ] Add error handling!
+-  [ ] Fix `pbg_gets`: short-circuit evaluation once buffer is full, restore `gets`-like behavior and size buffer precisely.
+-  [ ] Add whitespace insensitivity within relevant fields.
