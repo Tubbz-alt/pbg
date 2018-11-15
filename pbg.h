@@ -20,6 +20,7 @@ typedef enum {
 	PBG_LT_STRING,  // STRING literal
 	PBG_LT_DATE,    // DATE literal
 	PBG_LT_KEY,     // KEY literal
+	// Add more literals here.
 	PBG_MAX_LT,     // END OF LITERALS!
 	PBG_OP_NOT,   // !
 	PBG_OP_AND,   // &
@@ -31,6 +32,7 @@ typedef enum {
 	PBG_OP_NEQ,   // !=
 	PBG_OP_LTE,   // <=
 	PBG_OP_GTE,   // >=
+	// Add more operators here.
 	PBG_MAX_OP    // END OF OPS!
 } pbg_node_type;
 
@@ -45,12 +47,11 @@ typedef struct {
 } pbg_expr_node;
 
 /**
- * This struct represents a container/manager for a Prefix Boolean Expression.
- * The benefit of using this struct instead of a pbg_expr_node directly is the 
- * opportunity for indirection: this struct can store "global" expressions to
- * help reduce the memory footprint of the entire tree. For example, this
- * struct tracks all pbg_expr_node instances representing a KEY to avoid duplicate
- * creation and reduced workload during KEY resolution.
+ * This struct represents a Prefix Boolean Expression. The AST is represented
+ * using a 'flat' representation: two arrays are used to compactly and locally
+ * store each node.
+ *
+ * The static array stores non-KEY nodes. The dynamic array stores KEY nodes.
  */
 typedef struct {
 	pbg_expr_node*  _static;     /* Static nodes (read: not KEYs). */
@@ -67,6 +68,62 @@ typedef struct {
 	unsigned int  _MM;    /* month */
 	unsigned int  _DD;    /* day */
 } pbg_type_date;
+
+
+/**********************
+ *                    *
+ * Core API functions *
+ *                    *
+ **********************/
+
+/**
+ * Parses the string as a boolean expression in Prefix Boolean Grammar.
+ * @param e   PBG expression instance to initialize.
+ * @param str String to parse.
+ * @param n   Length of the string.
+ * @return 0 if successful, an error code if unsuccessful.
+ */
+int pbg_parse(pbg_expr* e, char* str, int n);
+
+/**
+ * Evaluates the Prefix Boolean Expression with the provided assignments.
+ * @param e    PBG expression to evaluate.
+ * @param dict Dictionary used to resolve KEY names.
+ * @return 1 if the PBG expression evaluates to true with the given dictionary. 
+ *         0 otherwise.
+ */
+int pbg_evaluate(pbg_expr* e, pbg_expr_node (*dict)(char*, int));
+
+/**
+ * Destroys the PBG expression instance and frees all associated resources.
+ * @param e PBG expression to destroy.
+ */
+void pbg_free(pbg_expr* e);
+
+/**
+ * Prints the Prefix Boolean Expression to the char pointer provided. If ptr is
+ * NULL and n is 0, then this function will allocate memory on the heap which
+ * must then be free'd by the caller. In this way, this function behaves in a
+ * manner reminiscent of fgets.
+ * @param e      PBG expression to print.
+ * @param bufptr Pointer to the output buffer.
+ * @param n      Length of the buffer pointed to by bufptr.
+ * @return Number of characters written to the buffer.
+ */
+char* pbg_gets(pbg_expr* e, char** bufptr, int n);
+
+/**
+ * Prints the expression in a human-readable tree format.
+ * @param e  PBG expression to print.
+ */
+void pbg_print(pbg_expr* e);
+
+
+/*************************************
+ *                                   *
+ * Conversion and checking functions *
+ *                                   *
+ *************************************/
 
 /**
  * Converts the string to a PBG expression operator. This does not parse
@@ -133,44 +190,5 @@ int pbg_isdate(char* str, int n);
  * @param n   Length of string to parse.
  */
 void pbg_todate(pbg_type_date* ptr, char* str, int n);
-
-/**
- * Parses the string as a boolean expression in Prefix Boolean Grammar.
- * @param e   PBG expression instance to initialize.
- * @param str String to parse.
- * @param n   Length of the string.
- * @return 0 if successful, an error code if unsuccessful.
- */
-int pbg_parse(pbg_expr* e, char* str, int n);
-
-/**
- * Destroys the PBG expression instance and frees all associated resources.
- * @param e PBG expression to destroy.
- */
-void pbg_free(pbg_expr* e);
-
-/**
- * Evaluates the Prefix Boolean Expression with the provided assignments.
- * @param e    PBG expression to evaluate.
- * @param dict Dictionary used to resolve KEY names.
- * @return 1 if the PBG expression evaluates to true with the given dictionary. 
- *         0 otherwise.
- */
-int pbg_evaluate(pbg_expr* e, pbg_expr_node (*dict)(char*, int));
-
-/**
- * Prints the Prefix Boolean Expression to the char pointer provided. If ptr is
- * NULL and n is 0, then this function will allocate memory on the heap which
- * must then be free'd by the caller. In this way, this function behaves in a
- * manner reminiscent of fgets.
- * @param e      PBG expression to print.
- * @param bufptr Pointer to the output buffer.
- * @param n      Length of the buffer pointed to by bufptr.
- * @return Number of characters written to the buffer.
- */
-char* pbg_gets(pbg_expr* e, char** bufptr, int n);
-
-
-void pbg_print(pbg_expr* e);
 
 #endif  /* __PBG_H__ */

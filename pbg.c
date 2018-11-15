@@ -3,140 +3,59 @@
 #include <stdio.h>
 #include <string.h>
 
+/********************
+ * Helper functions *
+ ********************/
 
-pbg_node_type pbg_toop(char* str, int n)
+/**
+ * Checks if the given character is a digit.
+ * @param c  Character to check.
+ */
+int is_a_digit(char c)
 {
-	if(n == 1) {
-		if(str[0] == '!')      return PBG_OP_NOT;
-		else if(str[0] == '&') return PBG_OP_AND;
-		else if(str[0] == '|') return PBG_OP_OR;
-		else if(str[0] == '=') return PBG_OP_EQ;
-		else if(str[0] == '<') return PBG_OP_LT;
-		else if(str[0] == '>') return PBG_OP_GT;
-		else if(str[0] == '?') return PBG_OP_EXST;
-	}else if(n == 2) {
-		if(str[0] == '!' && str[1] == '=')      return PBG_OP_NEQ;
-		else if(str[0] == '<' && str[1] == '=') return PBG_OP_LTE;
-		else if(str[0] == '>' && str[1] == '=') return PBG_OP_GTE;
-	}
-	return PBG_UNKNOWN;
+	return c >= '0' && c <= '9';
 }
 
-
-int pbg_istrue(char* str, int n)
+/**
+ * Static nodes are indexed by 0,1,2,... Dynamic nodes are indexed by 
+ * -1,-2,-3,..., where these correspond to the first, second, third, etc nodes 
+ * in the list. As such, this function converts the index to an array index in 
+ * either list depending on its sign and value.
+ * @param e      PBG expression to search.
+ * @param index  Index of the node to return.
+ * @return Pointer to the pbg_expr_node* in e specified by the index.
+ */
+pbg_expr_node* get_expr_node(pbg_expr* e, int index)
 {
-	return n == 4 && 
-		str[0] == 'T' && 
-		str[1] == 'R' && 
-		str[2] == 'U' && 
-		str[3] == 'E';
+	if(index < 0)
+		return e->_dynamic + -(index+1);
+	else
+		return e->_static + index;
 }
 
-
-int pbg_isfalse(char* str, int n)
-{
-	return n == 5 && 
-		str[0] == 'F' && 
-		str[1] == 'A' && 
-		str[2] == 'L' && 
-		str[3] == 'S' && 
-		str[4] == 'E';
-}
-
-
-int is_a_digit(char c) { return c >= '0' && c <= '9'; }
-
-int pbg_isnumber(char* str, int n)
-{
-	int i = 0;
-	
-	/* Check if negative or positive */
-	if(str[i] == '-' || str[i] == '+') i++;
-	/* Otherwise, ensure first character is a digit. */
-	else if(!is_a_digit(str[i]))
-		return 0;
-	
-	/* Parse everything before the dot. */
-	if(str[i] != '0' && is_a_digit(str[i])) {
-		while(i != n && is_a_digit(str[i])) i++;
-		if(i != n && !is_a_digit(str[i]) && str[i] != '.') return 0;
-	}else if(str[i] == '0') {
-		if(++i != n && !(str[i] == '.' || str[i] == 'e' || str[i] == 'E')) return 0;
-	}
-	
-	/* Parse everything after the dot. */
-	if(str[i] == '.') {
-		/* Last character must be a digit. */
-		if(i++ == n-1) return 0;
-		/* Exhaust all digits. */
-		while(i != n && is_a_digit(str[i])) i++;
-		if(i != n && !is_a_digit(str[i]) && str[i] != 'e' && str[i] != 'E') return 0;
-	}
-	
-	/* Parse everything after the exponent. */
-	if(str[i] == 'e' || str[i] == 'E') {
-		/* Last character must be a digit. */
-		if(i++ == n-1) return 0;
-		/* Parse positive or negative sign. */
-		if(str[i] == '-' || str[i] == '+') i++;
-		/* Exhaust all digits. */
-		while(i != n && is_a_digit(str[i])) i++;
-		if(i != n && !is_a_digit(str[i])) return 0;
-	}
-	
-	/* Probably a number! */
-	return 1;
-}
-
-
-int pbg_iskey(char* str, int n)
-{
-	return str[0] == '[' && str[n-1] == ']';
-}
-
-
-int pbg_isstring(char* str, int n)
-{
-	return str[0] == '\'' && str[n-1] == '\'';
-}
-
-
-int pbg_isdate(char* str, int n)
-{
-	return n == 10 &&
-		str[0] >= '0' && str[0] <= '9' && 
-		str[1] >= '0' && str[1] <= '9' && 
-		str[2] >= '0' && str[2] <= '9' && 
-		str[3] >= '0' && str[3] <= '9' && 
-		str[4] == '-' && 
-		str[5] >= '0' && str[5] <= '9' && 
-		str[6] >= '0' && str[6] <= '9' && 
-		str[7] == '-' && 
-		str[8] >= '0' && str[8] <= '9' && 
-		str[9] >= '0' && str[9] <= '9';
-}
-
-
-void pbg_todate(pbg_type_date* ptr, char* str, int n)
-{
-	ptr->_YYYY = (str[0]-'0')*1000 + (str[1]-'0')*100 + (str[2]-'0')*10 + (str[3]-'0');
-	ptr->_MM = (str[5]-'0')*10 + (str[6]-'0');
-	ptr->_DD = (str[8]-'0')*10 + (str[9]-'0');
-	// TODO enforce ranges on months and days
-}
-
-
+/**
+ * Free's the single pbg_expr_node pointed to by the specified pointer.
+ * @param node  pbg_expr_node to free.
+ */
 void free_expr_node(pbg_expr_node* node)
 {
+	/* These are literals and operators for which _data is not malloc'd. */
 	if(node->_type == PBG_LT_TRUE)
 		return;
 	if(node->_type == PBG_LT_FALSE)
 		return;
 	if(node->_type == PBG_UNKNOWN)
 		return;
+	
+	/* For anything else, _data is malloc'd. Free it. */
 	free(node->_data);
 }
 
+/**
+ * These structures are used by pbg_parse_r during recursive calls to track the 
+ * current field in the expression string, the current closing brace in the 
+ * expression string, and the index of the node created during the call.
+ */
 typedef struct {
 	int  field;    /* Index of current field. */
 	int  closing;  /* Index of next closing. */
@@ -146,6 +65,11 @@ typedef struct {
 	int      nodeidx;  /* Index of created node. */
 } int2ret;
 
+
+/**********************
+ * Core API Functions *
+ **********************/
+
 /**
  * @param fields    Indices of each field in str.
  * @param lengths   Lengths of each field in str.
@@ -154,9 +78,8 @@ typedef struct {
  */
 int2ret pbg_parse_r(pbg_expr* e, char* str, int* fields, int* lengths, int* closings, int2arg arg)
 {
-	pbg_expr_node* node;
-	int2ret ret;
-	
+	pbg_expr_node* node;  /* Alias for node being constructed. */
+	int2ret        ret;   /* Return values from this function invokation. */
 	
 	/* Identify type of operator this node represents, if any. */
 	pbg_node_type type = pbg_toop(str+fields[arg.field], lengths[arg.field]);
@@ -168,6 +91,8 @@ int2ret pbg_parse_r(pbg_expr* e, char* str, int* fields, int* lengths, int* clos
 		node = e->_static + nodeidx;
 		node->_type = type;
 		node->_int = 0;
+		
+		/* We've processed this field. Move on to the next one! */
 		arg.field++;
 		
 		/* Allocate memory for pointers to children nodes. */
@@ -178,8 +103,11 @@ int2ret pbg_parse_r(pbg_expr* e, char* str, int* fields, int* lengths, int* clos
 		}
 		
 		/* Recursively build subtree rooted at this operator node. */
+		/* pbg_evaluate set last element in fields to -1. This is used to
+		 * ensure we don't run past the end of the string. */
 		ret.arg = arg;
-		while(fields[ret.arg.field] != -1 && fields[ret.arg.field] < closings[ret.arg.closing]) {
+		while(fields[ret.arg.field] != -1 && 
+				fields[ret.arg.field] < closings[ret.arg.closing]) {
 			ret = pbg_parse_r(e, str, fields, lengths, closings, ret.arg);
 			/* Expand array of children if necessary. */
 			if(node->_int == maxchildren) {
@@ -203,7 +131,8 @@ int2ret pbg_parse_r(pbg_expr* e, char* str, int* fields, int* lengths, int* clos
 		ret.nodeidx = nodeidx;
 		
 		/* This node read all of its children until the next closing. 
-		 * The parent node will need to read until the end of the next next one. */
+		 * The parent node will need to read until the end of the next 
+		 * next one. */
 		ret.arg.closing++;
 		
 	/* This field is a literal. */
@@ -219,6 +148,7 @@ int2ret pbg_parse_r(pbg_expr* e, char* str, int* fields, int* lengths, int* clos
 			/* Subtract 1 to offset first element to -1 from 0. */
 			ret.nodeidx = -(e->_dynamicsz++)-1;
 			node = e->_dynamic - (ret.nodeidx+1);
+			/* Initialize node! */
 			node->_type = PBG_LT_KEY;
 			node->_int = (n-2) * sizeof(char);
 			node->_data = malloc(node->_int);
@@ -226,12 +156,14 @@ int2ret pbg_parse_r(pbg_expr* e, char* str, int* fields, int* lengths, int* clos
 				// TODO failed to allocate memory for node
 			}
 			strncpy((char*)node->_data, str+1, n-2);
+			// TODO ensure each key node in dynamic is unique?
 			
 		/* DATE. Convert to PBG DATE constant. */
 		}else if(pbg_isdate(str, n)) {
 			/* Static nodes have positive indices. */
 			ret.nodeidx = e->_staticsz++;
 			node = e->_static + ret.nodeidx;
+			/* Initialize node. */
 			node->_type = PBG_LT_DATE;
 			node->_int = sizeof(pbg_type_date);
 			node->_data = malloc(node->_int);
@@ -245,6 +177,7 @@ int2ret pbg_parse_r(pbg_expr* e, char* str, int* fields, int* lengths, int* clos
 			/* Static nodes have positive indices. */
 			ret.nodeidx = e->_staticsz++;
 			node = e->_static + ret.nodeidx;
+			/* Initialize node! */
 			node->_type = PBG_LT_NUMBER;
 			node->_int = sizeof(double);
 			node->_data = malloc(node->_int);
@@ -258,6 +191,7 @@ int2ret pbg_parse_r(pbg_expr* e, char* str, int* fields, int* lengths, int* clos
 			/* Static nodes have positive indices. */
 			ret.nodeidx = e->_staticsz++;
 			node = e->_static + ret.nodeidx;
+			/* Initialize node! */
 			node->_type = PBG_LT_STRING;
 			node->_int = (n-2) * sizeof(char);
 			node->_data = malloc(node->_int);
@@ -271,6 +205,7 @@ int2ret pbg_parse_r(pbg_expr* e, char* str, int* fields, int* lengths, int* clos
 			/* Static nodes have positive indices. */
 			ret.nodeidx = e->_staticsz++;
 			node = e->_static + ret.nodeidx;
+			/* Initialize node! */
 			node->_type = PBG_LT_TRUE;
 			node->_int = 0;
 			node->_data = NULL;
@@ -280,6 +215,7 @@ int2ret pbg_parse_r(pbg_expr* e, char* str, int* fields, int* lengths, int* clos
 			/* Static nodes have positive indices. */
 			ret.nodeidx = e->_staticsz++;
 			node = e->_static + ret.nodeidx;
+			/* Initialize node! */
 			node->_type = PBG_LT_FALSE;
 			node->_int = 0;
 			node->_data = NULL;
@@ -301,15 +237,23 @@ int pbg_parse(pbg_expr* e, char* str, int n)
 {
 	// TODO verify str is an element of PBG (syntactically, not semantically)
 	
-	/* Count number of non-STRING commas. */
-	// TODO ensure commas are not in a STRING
+	/* Count number of non-STRING commas, keys, and closing braces. */
 	int numcommas = 0;
 	int numkeys = 0;
 	int numclosings = 0;
-	for(int i = 0; i < n; i++)
-		if(str[i] == ',') numcommas++;
-		else if(str[i] == '[') numkeys++;
-		else if(str[i] == ')') numclosings++;
+	int instring = 0;
+	for(int i = 0; i < n; i++) {
+		/* Check if we're in a string or not. */
+		if((!instring && str[i] == '\'') || 
+				(instring && str[i] == '\'' && str[i-1] != '\\'))
+			instring = 1 - instring;
+		/* Nothing gets counted if we are in a string! */
+		if(!instring) {
+			if(str[i] == ',') numcommas++;
+			else if(str[i] == '[') numkeys++;
+			else if(str[i] == ')') numclosings++;
+		}
+	}
 	
 	/* Compute sizes of static and dynamic arrays. */
 	/* The relevant fields in e are used as indexing each array during parsing. */
@@ -327,23 +271,36 @@ int pbg_parse(pbg_expr* e, char* str, int n)
 	
 	/* Compute position and lengths of each field & position of closings. */
 	fields[0] = (str[0] == '(') ? 1 : 0;
-	for(int i=fields[0], c=0, f=0, open=1; i < n; i++) {
-		if(str[i] == ')')
-			closings[c] = i;
-		if(open && (str[i] == ')' || (str[i] == ',' && str[i-1] != ')')))
-			lengths[f] = i - fields[f], f++, open = 0;
-		if(!open && (str[i] == '(' || (str[i] == ',' && str[i+1] != '(')))
-			fields[f] = i+1, open = 1;
+	for(int i=fields[0], c=0, f=0, open=1, instring=0; i < n; i++) {
+		/* Check if we're in a string or not. */
+		if((!instring && str[i] == '\'') || 
+				(instring && str[i] == '\'' && str[i-1] != '\\'))
+			instring = 1 - instring;
+		/* Nothing gets opened, closed, or measured if we're in a string! */
+		if(!instring) {
+			if(str[i] == ')')
+				closings[c] = i;
+			if(open && (str[i] == ')' || (str[i] == ',' && str[i-1] != ')')))
+				lengths[f] = i - fields[f], f++, open = 0;
+			if(!open && (str[i] == '(' || (str[i] == ',' && str[i+1] != '(')))
+				fields[f] = i+1, open = 1;
+		}
 	}
+	/* Needed to determine when we've reached the end of the expression string
+	 * in pbg_parse_r. */
 	fields[numfields] = -1;
 	
 	/* Allocate space for static and dynamic node arrays. */
 	e->_static = (pbg_expr_node*) malloc(numstatic * sizeof(pbg_expr_node));
 	e->_dynamic = (pbg_expr_node*) malloc(numdynamic * sizeof(pbg_expr_node));
 	
-	/* Recursively parse the expression string to build the expression tree. */
+	/* These are initialized to 0 as they are used as counters for the number 
+	 * of each type of node created. In the end they should be equal to the 
+	 * associated local variables here. */
 	e->_staticsz = 0;
 	e->_dynamicsz = 0;
+	
+	/* Recursively parse the expression string to build the expression tree. */
 	pbg_parse_r(e, str, fields, lengths, closings, (int2arg) { 0, 0 });
 	
 	/* Clean up! */
@@ -352,29 +309,6 @@ int pbg_parse(pbg_expr* e, char* str, int n)
 	free(closings);
 }
 
-
-void pbg_free(pbg_expr* e)
-{
-	/* Free individual static nodes. Some do not have _data malloc'd. */
-	for(int i = e->_staticsz-1; i >= 0; i--)
-		free_expr_node(e->_static+i);
-	
-	/* Free individual dynamic nodes. All have _data malloc'd. */
-	for(int i = 0; i < e->_dynamicsz; i++)
-		free(e->_dynamic[i]._data);
-	
-	/* Free internal node arrays. */
-	free(e->_static);
-	free(e->_dynamic);
-}
-
-pbg_expr_node* get_child(pbg_expr* e, int child)
-{
-	if(child < 0)
-		return e->_dynamic + -(child+1);
-	else
-		return e->_static + child;
-}
 
 int pbg_evaluate_r(pbg_expr* e, pbg_expr_node* node)
 {
@@ -390,7 +324,7 @@ int pbg_evaluate_r(pbg_expr* e, pbg_expr_node* node)
 		int size = node->_int;
 		pbg_expr_node* child0, *child1, *childi;
 		pbg_expr_node keylt;
-		child0 = get_child(e, children[0]);
+		child0 = get_expr_node(e, children[0]);
 		switch(node->_type) {
 			/* NOT: invert the truth value of the contained expression. */
 			case PBG_OP_NOT:
@@ -399,14 +333,14 @@ int pbg_evaluate_r(pbg_expr* e, pbg_expr_node* node)
 			/* AND: true only if all subexpressions are true. */
 			case PBG_OP_AND:
 				for(int i = 0; i < size; i++)
-					if(pbg_evaluate_r(e, get_child(e, children[i])) == 0)
+					if(pbg_evaluate_r(e, get_expr_node(e, children[i])) == 0)
 						return 0;
 				return 1;
 				break;
 			/* OR: true if any of the subexpressions are true. */
 			case PBG_OP_OR:
 				for(int i = 0; i < size; i++)
-					if(pbg_evaluate_r(e, get_child(e, children[i])) == 1)
+					if(pbg_evaluate_r(e, get_expr_node(e, children[i])) == 1)
 						return 1;
 				return 0;
 				break;
@@ -414,7 +348,7 @@ int pbg_evaluate_r(pbg_expr* e, pbg_expr_node* node)
 			case PBG_OP_EQ:
 				/* Ensure type and size of all children are identical. */
 				for(int i = 1; i < size; i++) {
-					childi = get_child(e, children[i]);
+					childi = get_expr_node(e, children[i]);
 					if(childi->_int != child0->_int || 
 							childi->_type != child0->_type)
 						return 0;
@@ -427,12 +361,12 @@ int pbg_evaluate_r(pbg_expr* e, pbg_expr_node* node)
 				break;
 			/* LT: true only if the first child is less than the second. */
 			case PBG_OP_LT:
-				child1 = get_child(e, children[1]);
+				child1 = get_expr_node(e, children[1]);
 				return *((double*)child0->_data) < *((double*)child1->_data);
 				break;
 			/* GT: true only if the first child is greater than the second. */
 			case PBG_OP_GT:
-				child1 = get_child(e, children[1]);
+				child1 = get_expr_node(e, children[1]);
 				return *((double*)child0->_data) > *((double*)child1->_data);
 				break;
 			/* EXST: true only if the KEY exists in the given dictionary. */
@@ -441,19 +375,19 @@ int pbg_evaluate_r(pbg_expr* e, pbg_expr_node* node)
 				break;
 			/* NEQ: true only if the two children are different. */
 			case PBG_OP_NEQ:
-				child1 = get_child(e, children[1]);
+				child1 = get_expr_node(e, children[1]);
 				return child1->_type != child0->_type || 
 						child1->_int != child0->_int || 
 						strncmp(child1->_data, child0->_data, child0->_int);
 				break;
 			/* LTE: true only if the first child is at most the second. */
 			case PBG_OP_LTE:
-				child1 = get_child(e, children[1]);
+				child1 = get_expr_node(e, children[1]);
 				return *((double*)child0->_data) <= *((double*)child1->_data);
 				break;
 			/* GTE: true only if the first child is at least the second. */
 			case PBG_OP_GTE:
-				child1 = get_child(e, children[1]);
+				child1 = get_expr_node(e, children[1]);
 				return *((double*)child0->_data) >= *((double*)child1->_data);
 				break;
 		}
@@ -492,6 +426,22 @@ int pbg_evaluate(pbg_expr* e, pbg_expr_node (*dict)(char*, int))
 
 	/* Done! */
 	return result;
+}
+
+
+void pbg_free(pbg_expr* e)
+{
+	/* Free individual static nodes. Some do not have _data malloc'd. */
+	for(int i = e->_staticsz-1; i >= 0; i--)
+		free_expr_node(e->_static+i);
+	
+	/* Free individual dynamic nodes. All have _data malloc'd. */
+	for(int i = 0; i < e->_dynamicsz; i++)
+		free(e->_dynamic[i]._data);
+	
+	/* Free internal node arrays. */
+	free(e->_static);
+	free(e->_dynamic);
 }
 
 
@@ -567,7 +517,7 @@ int pbg_gets_r(pbg_expr* e, pbg_expr_node* node, char* buf, int i)
 		buf[i++] = ',';
 		int* children = (int*)node->_data;
 		for(int j = 0; j < node->_int; j++) {
-			pbg_expr_node* child = get_child(e, children[j]);
+			pbg_expr_node* child = get_expr_node(e, children[j]);
 			i = pbg_gets_r(e, child, buf, i);
 			if(j != node->_int-1)
 				buf[i++] = ',';
@@ -649,4 +599,131 @@ void pbg_print_h(pbg_expr* e, pbg_expr_node* node, int depth)
 void pbg_print(pbg_expr* e)
 {
 	pbg_print_h(e, e->_static, 0);
+}
+
+
+/*************************************
+ * Conversion and checking functions *
+ *************************************/
+
+pbg_node_type pbg_toop(char* str, int n)
+{
+	if(n == 1) {
+		if(str[0] == '!')      return PBG_OP_NOT;
+		else if(str[0] == '&') return PBG_OP_AND;
+		else if(str[0] == '|') return PBG_OP_OR;
+		else if(str[0] == '=') return PBG_OP_EQ;
+		else if(str[0] == '<') return PBG_OP_LT;
+		else if(str[0] == '>') return PBG_OP_GT;
+		else if(str[0] == '?') return PBG_OP_EXST;
+	}else if(n == 2) {
+		if(str[0] == '!' && str[1] == '=')      return PBG_OP_NEQ;
+		else if(str[0] == '<' && str[1] == '=') return PBG_OP_LTE;
+		else if(str[0] == '>' && str[1] == '=') return PBG_OP_GTE;
+	}
+	return PBG_UNKNOWN;
+}
+
+
+int pbg_istrue(char* str, int n)
+{
+	return n == 4 && 
+		str[0] == 'T' && 
+		str[1] == 'R' && 
+		str[2] == 'U' && 
+		str[3] == 'E';
+}
+
+
+int pbg_isfalse(char* str, int n)
+{
+	return n == 5 && 
+		str[0] == 'F' && 
+		str[1] == 'A' && 
+		str[2] == 'L' && 
+		str[3] == 'S' && 
+		str[4] == 'E';
+}
+
+
+int pbg_isnumber(char* str, int n)
+{
+	int i = 0;
+	
+	/* Check if negative or positive */
+	if(str[i] == '-' || str[i] == '+') i++;
+	/* Otherwise, ensure first character is a digit. */
+	else if(!is_a_digit(str[i]))
+		return 0;
+	
+	/* Parse everything before the dot. */
+	if(str[i] != '0' && is_a_digit(str[i])) {
+		while(i != n && is_a_digit(str[i])) i++;
+		if(i != n && !is_a_digit(str[i]) && str[i] != '.') return 0;
+	}else if(str[i] == '0') {
+		if(++i != n && !(str[i] == '.' || str[i] == 'e' || str[i] == 'E')) return 0;
+	}
+	
+	/* Parse everything after the dot. */
+	if(str[i] == '.') {
+		/* Last character must be a digit. */
+		if(i++ == n-1) return 0;
+		/* Exhaust all digits. */
+		while(i != n && is_a_digit(str[i])) i++;
+		if(i != n && !is_a_digit(str[i]) && str[i] != 'e' && str[i] != 'E') return 0;
+	}
+	
+	/* Parse everything after the exponent. */
+	if(str[i] == 'e' || str[i] == 'E') {
+		/* Last character must be a digit. */
+		if(i++ == n-1) return 0;
+		/* Parse positive or negative sign. */
+		if(str[i] == '-' || str[i] == '+') i++;
+		/* Exhaust all digits. */
+		while(i != n && is_a_digit(str[i])) i++;
+		if(i != n && !is_a_digit(str[i])) return 0;
+	}
+	
+	/* Probably a number! */
+	return 1;
+}
+
+
+int pbg_iskey(char* str, int n)
+{
+	return str[0] == '[' && str[n-1] == ']';
+}
+
+
+int pbg_isstring(char* str, int n)
+{
+	return str[0] == '\'' && str[n-1] == '\'';
+}
+
+
+int pbg_isdate(char* str, int n)
+{
+	return n == 10 &&
+		str[0] >= '0' && str[0] <= '9' && 
+		str[1] >= '0' && str[1] <= '9' && 
+		str[2] >= '0' && str[2] <= '9' && 
+		str[3] >= '0' && str[3] <= '9' && 
+		str[4] == '-' && 
+		str[5] >= '0' && str[5] <= '9' && 
+		str[6] >= '0' && str[6] <= '9' && 
+		str[7] == '-' && 
+		str[8] >= '0' && str[8] <= '9' && 
+		str[9] >= '0' && str[9] <= '9';
+}
+
+
+void pbg_todate(pbg_type_date* ptr, char* str, int n)
+{
+	/* Year. */
+	ptr->_YYYY = (str[0]-'0')*1000 + (str[1]-'0')*100 + (str[2]-'0')*10 + (str[3]-'0');
+	/* Month. */
+	ptr->_MM = (str[5]-'0')*10 + (str[6]-'0');
+	/* Day. */
+	ptr->_DD = (str[8]-'0')*10 + (str[9]-'0');
+	// TODO enforce ranges on months and days
 }

@@ -185,6 +185,8 @@ int main()
 	result += test_pbg_evaluate("(=,-10,'hi')", 0);
 	result += test_pbg_evaluate("(=,-10,-10)", 1);
 	result += test_pbg_evaluate("(=,'hi','hi')", 1);
+	result += test_pbg_evaluate("(=,'a,b\\'c','a,b\\'c')", 1);
+	result += test_pbg_evaluate("(=,'ab\\'c','ab\\'d')", 0);
 	result += test_pbg_evaluate("(=,'hia','hi')", 0);
 	result += test_pbg_evaluate("(=,'hi','h ')", 0);
 	result += test_pbg_evaluate("(=,2018-10-12,'h ')", 0);
