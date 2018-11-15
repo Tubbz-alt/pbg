@@ -115,5 +115,6 @@ This project is still a work-in-progress. Updates will be forthcoming.
    + 2018-11-14: Basic implementation provided for pbg_evaluate. KEY literals are not yet resolved via dictionary lookup.
    + 2018-11-15: `pbg_evaluate` now fully functional. KEY resolution is achieved via a user-defined function.
 -  [ ] Add error handling!
+   + 2018-11-15: Basic error handling is in place. However, the grammar parsing is not yet robust; strings not in PBG are still accepted. (And memory errors are still a problem for some inputs.)
 -  [ ] Fix `pbg_gets`: short-circuit evaluation once buffer is full, restore `gets`-like behavior and size buffer precisely.
 -  [ ] Add whitespace insensitivity within relevant fields.
