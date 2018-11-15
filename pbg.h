@@ -156,7 +156,7 @@ void pbg_free(pbg_expr* e);
  * @return 1 if the PBG expression evaluates to true with the given dictionary. 
  *         0 otherwise.
  */
-int pbg_evaluate(pbg_expr* e, pbg_expr* (*dict)(char*, int));
+int pbg_evaluate(pbg_expr* e, pbg_expr_node (*dict)(char*, int));
 
 /**
  * Prints the Prefix Boolean Expression to the char pointer provided. If ptr is

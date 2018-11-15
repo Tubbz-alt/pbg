@@ -126,6 +126,17 @@ void pbg_todate(pbg_type_date* ptr, char* str, int n)
 }
 
 
+void free_expr_node(pbg_expr_node* node)
+{
+	if(node->_type == PBG_LT_TRUE)
+		return;
+	if(node->_type == PBG_LT_FALSE)
+		return;
+	if(node->_type == PBG_UNKNOWN)
+		return;
+	free(node->_data);
+}
+
 typedef struct {
 	int  field;    /* Index of current field. */
 	int  closing;  /* Index of next closing. */
@@ -345,16 +356,12 @@ int pbg_parse(pbg_expr* e, char* str, int n)
 void pbg_free(pbg_expr* e)
 {
 	/* Free individual static nodes. Some do not have _data malloc'd. */
-	for(int i = e->_staticsz-1; i >= 0; i--) {
-		pbg_node_type type = e->_static[i]._type;
-		if(type != PBG_LT_TRUE && type != PBG_LT_FALSE)
-			free(e->_static[i]._data);
-	}
+	for(int i = e->_staticsz-1; i >= 0; i--)
+		free_expr_node(e->_static+i);
 	
 	/* Free individual dynamic nodes. All have _data malloc'd. */
-	for(int i = 0; i < e->_dynamicsz; i++) {
+	for(int i = 0; i < e->_dynamicsz; i++)
 		free(e->_dynamic[i]._data);
-	}
 	
 	/* Free internal node arrays. */
 	free(e->_static);
@@ -369,7 +376,7 @@ pbg_expr_node* get_child(pbg_expr* e, int child)
 		return e->_static + child;
 }
 
-int pbg_evaluate_r(pbg_expr* e, pbg_expr_node* node, pbg_expr* (*dict)(char*, int))
+int pbg_evaluate_r(pbg_expr* e, pbg_expr_node* node)
 {
 	/* This is a literal node. */
 	if(node->_type < PBG_MAX_LT) {
@@ -382,23 +389,24 @@ int pbg_evaluate_r(pbg_expr* e, pbg_expr_node* node, pbg_expr* (*dict)(char*, in
 		int* children = (int*) node->_data;
 		int size = node->_int;
 		pbg_expr_node* child0, *child1, *childi;
+		pbg_expr_node keylt;
 		child0 = get_child(e, children[0]);
 		switch(node->_type) {
 			/* NOT: invert the truth value of the contained expression. */
 			case PBG_OP_NOT:
-				return (pbg_evaluate_r(e, child0, dict) == 0);
+				return (pbg_evaluate_r(e, child0) == 0);
 				break;
 			/* AND: true only if all subexpressions are true. */
 			case PBG_OP_AND:
 				for(int i = 0; i < size; i++)
-					if(pbg_evaluate_r(e, get_child(e, children[i]), dict) == 0)
+					if(pbg_evaluate_r(e, get_child(e, children[i])) == 0)
 						return 0;
 				return 1;
 				break;
 			/* OR: true if any of the subexpressions are true. */
 			case PBG_OP_OR:
 				for(int i = 0; i < size; i++)
-					if(pbg_evaluate_r(e, get_child(e, children[i]), dict) == 1)
+					if(pbg_evaluate_r(e, get_child(e, children[i])) == 1)
 						return 1;
 				return 0;
 				break;
@@ -429,7 +437,7 @@ int pbg_evaluate_r(pbg_expr* e, pbg_expr_node* node, pbg_expr* (*dict)(char*, in
 				break;
 			/* EXST: true only if the KEY exists in the given dictionary. */
 			case PBG_OP_EXST:
-				return dict((char*) child0->_data, node->_int) != NULL;
+				return child0->_type != PBG_UNKNOWN;  /* elegant. */
 				break;
 			/* NEQ: true only if the two children are different. */
 			case PBG_OP_NEQ:
@@ -454,9 +462,36 @@ int pbg_evaluate_r(pbg_expr* e, pbg_expr_node* node, pbg_expr* (*dict)(char*, in
 	}
 }
 
-int pbg_evaluate(pbg_expr* e, pbg_expr* (*dict)(char*, int))
+int pbg_evaluate(pbg_expr* e, pbg_expr_node (*dict)(char*, int))
 {
-	return pbg_evaluate_r(e, e->_static, dict);
+	/* KEY resolution. Lookup every key in provided dictionary. */
+	pbg_expr_node* dynamics;
+	dynamics = (pbg_expr_node*) malloc(e->_dynamicsz * sizeof(pbg_expr_node));
+	if(dynamics == NULL) {
+		// TODO error handling
+	}
+	for(int i = 0; i < e->_dynamicsz; i++) {
+		pbg_expr_node* keylt = e->_dynamic+i;
+		dynamics[i] = dict((char*)(keylt->_data), keylt->_int);
+	}
+
+	/* Swap out KEY literals with dictionary equivalents. */
+	pbg_expr_node* old = e->_dynamic;
+	e->_dynamic = dynamics;
+
+	/* Evaluate expression! */
+	int result = pbg_evaluate_r(e, e->_static);
+
+	/* Restore old KEY literals. */
+	e->_dynamic = old;
+
+	/* Clean up malloc'd memory. */
+	for(int i = 0; i < e->_dynamicsz; i++)
+		free_expr_node(dynamics+i);
+	free(dynamics);
+
+	/* Done! */
+	return result;
 }
 
 

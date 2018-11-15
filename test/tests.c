@@ -5,6 +5,28 @@
 
 #define PBG_RESULT(name,num) if((num) == 0) printf("%s:\tPassed!\n", name); else printf("%s:\t%d tests failed!\n", name, (num)); result = 0
 
+/* This is a dictionary used for testing purposes. 
+ * It defines keys [a]=5.0, [b]=5.0, and [c]=6.0. */
+pbg_expr_node test_dict(char* key, int n)
+{
+	pbg_expr_node keylt;
+	keylt._type = PBG_UNKNOWN;
+	keylt._int = -1;
+	keylt._data = NULL;
+	if(key[0] == 'a' || key[0] == 'b') {
+		keylt._type = PBG_LT_NUMBER;
+		keylt._int = sizeof(double);
+		keylt._data = malloc(keylt._int);
+		*((double*)keylt._data) = 5.0;
+	}else if(key[0] == 'c') {
+		keylt._type = PBG_LT_NUMBER;
+		keylt._int = sizeof(double);
+		keylt._data = malloc(keylt._int);
+		*((double*)keylt._data) = 6.0;
+	}
+	return keylt;
+}
+
 
 int test_pbg_istype(int (*pbg_func)(char*,int), char* str, int expected)
 {
@@ -18,7 +40,7 @@ int test_pbg_evaluate(char* str, int expected)
 {
 	pbg_expr e;
 	pbg_parse(&e, str, strlen(str));
-	int result = pbg_evaluate(&e, NULL) != expected;
+	int result = pbg_evaluate(&e, test_dict) != expected;
 	if(result == 1)
 		printf("failed: \"%s\", expected=%d\n", str, expected);
 	pbg_free(&e);
@@ -150,6 +172,11 @@ int main()
 	result += test_pbg_evaluate("(|,TRUE,FALSE)", 1);
 	result += test_pbg_evaluate("(|,FALSE,TRUE)", 1);
 	result += test_pbg_evaluate("(|,FALSE,FALSE)", 0);
+	/* EXST */
+	result += test_pbg_evaluate("(?,[a])", 1);
+	result += test_pbg_evaluate("(?,[b])", 1);
+	result += test_pbg_evaluate("(?,[c])", 1);
+	result += test_pbg_evaluate("(?,[d])", 0);
 	/* EQUAL */
 	result += test_pbg_evaluate("(=,10,10)", 1);
 	result += test_pbg_evaluate("(=,9,10)", 0);
@@ -166,9 +193,10 @@ int main()
 	result += test_pbg_evaluate("(=,2018-10-13,2018-10-12)", 0);
 	result += test_pbg_evaluate("(=,2018-10-13,2017-10-13)", 0);
 	result += test_pbg_evaluate("(=,2018-10-13,2018-11-13)", 0);
-	result += test_pbg_evaluate("(=,[ab],[ab])", 1);
-	result += test_pbg_evaluate("(=,[ab],[ac])", 0);
-	result += test_pbg_evaluate("(=,[abc],[ab])", 0);
+	result += test_pbg_evaluate("(=,[a],[a])", 1);
+	result += test_pbg_evaluate("(=,[a],[b])", 1);
+	result += test_pbg_evaluate("(=,[a],[c])", 0);
+	result += test_pbg_evaluate("(=,[c],[b])", 0);
 	result += test_pbg_evaluate("(=,TRUE,TRUE)", 1);
 	result += test_pbg_evaluate("(=,TRUE,FALSE)", 0);
 	result += test_pbg_evaluate("(=,FALSE,TRUE)", 0);
