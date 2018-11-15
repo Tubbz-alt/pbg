@@ -1,7 +1,7 @@
 # pbg
 (Prefix Boolean Grammar) A simple grammar for writing boolean expressions implemented in a small, portable C library.
 
-[about](#about) | [goals](#goals) | [definition](#definition) | [API](#API) | [can I use it?](#can-I-use-it?)
+[about](#about) | [goals](#goals) | [definition](#definition) | [API](#API) | [can I use it?](#can-I-use-it)
 
 
 ## about
