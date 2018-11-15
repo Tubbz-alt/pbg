@@ -7,6 +7,44 @@
 #define __PBG_H__
 
 /**
+ * These are type specifiers for all possible PBG errors.
+ */
+typedef enum {
+	PBG_ERR_NONE,
+	PBG_ERR_ALLOC,
+	PBG_ERR_STATE,
+	PBG_ERR_SYNTAX,
+	PBG_ERR_UNKNOWN_TYPE,
+	PBG_ERR_OP_ARITY,
+	PBG_ERR_OP_ARG_TYPE
+} pbg_error_type;
+
+/**
+ * This struct represents a PBG error. Errors can be generated during parsing 
+ * and evaluation and should be checked by the caller.
+ */
+typedef struct {
+	pbg_error_type  _type;  /* Error type. */
+	int             _line;  /* Line of file where error occurred. */
+	char*           _file;  /* File containing error. */
+	int             _int;   /* Type determines what this is used for! */
+	void*           _data;  /* Data to be included with error report. */
+} pbg_error;
+
+/**
+ * Translates the given pbg_error_type to a human-readable string.
+ * @param type  PBG error type to translate.
+ */
+char* pbg_error_str(pbg_error_type type);
+
+/**
+ * Frees resources being used by the given error, if any. This function does
+ * not free the provided pointer.
+ * @param e  PBG error to clean up.
+ */
+void pbg_error_free(pbg_error* e);
+
+/**
  * These are the PBG operators supported by this implementation. They can be
  * cross-referenced with the grammar pseudocode above. Note: some values are
  * no-ops, i.e. they are symbolic values used to indicate leaves in the
@@ -79,23 +117,25 @@ typedef struct {
 /**
  * Parses the string as a boolean expression in Prefix Boolean Grammar.
  * @param e   PBG expression instance to initialize.
+ * @param err Container to store error, if any occurs.
  * @param str String to parse.
  * @param n   Length of the string.
- * @return 0 if successful, an error code if unsuccessful.
  */
-int pbg_parse(pbg_expr* e, char* str, int n);
+void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n);
 
 /**
  * Evaluates the Prefix Boolean Expression with the provided assignments.
  * @param e    PBG expression to evaluate.
+ * @param err  Container to store error, if any occurs.
  * @param dict Dictionary used to resolve KEY names.
  * @return 1 if the PBG expression evaluates to true with the given dictionary. 
  *         0 otherwise.
  */
-int pbg_evaluate(pbg_expr* e, pbg_expr_node (*dict)(char*, int));
+int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_expr_node (*dict)(char*, int));
 
 /**
  * Destroys the PBG expression instance and frees all associated resources.
+ * This function does not free the provided pointer.
  * @param e PBG expression to destroy.
  */
 void pbg_free(pbg_expr* e);
@@ -109,6 +149,7 @@ void pbg_free(pbg_expr* e);
  * @param bufptr Pointer to the output buffer.
  * @param n      Length of the buffer pointed to by bufptr.
  * @return Number of characters written to the buffer.
+ * @param err Container to store error, if any occurs.
  */
 char* pbg_gets(pbg_expr* e, char** bufptr, int n);
 
@@ -125,15 +166,15 @@ void pbg_print(pbg_expr* e);
  *                                   *
  *************************************/
 
-/**
- * Converts the string to a PBG expression operator. This does not parse
- * literals! Use the appropriate pbg_to* function for that.
- * @param op  Container to save parsed value to.
+/** 
+ * Identifies the PBG expression type of the given string. This function works
+ * for both literal and operator types.
  * @param str String to parse.
- * @param n   Length of string to parse.
- * @param PBG_UNKNOWN if parsing fails, PBG_OP_* if success.
+ * @param n   Length of the string.
+ * @return the pbg_node_type associated with the given string, PBG_UNKNOWN if
+ *         none.
  */
-pbg_node_type pbg_toop(char* str, int n);
+pbg_node_type pbg_gettype(char* str, int n);
 
 /**
  * Checks if the given string encodes a valid PBG TRUE literal.
