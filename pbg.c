@@ -383,23 +383,22 @@ int pbg_evaluate_r(pbg_expr* e, pbg_expr_node* node, pbg_expr* (*dict)(char*, in
 		int size = node->_int;
 		pbg_expr_node* child0, *child1, *childi;
 		child0 = get_child(e, children[0]);
-		child1 = get_child(e, children[1]);
 		switch(node->_type) {
 			/* NOT: invert the truth value of the contained expression. */
 			case PBG_OP_NOT:
-				return (pbg_evaluate_r(e, e->_static + children[0], dict) == 0);
+				return (pbg_evaluate_r(e, child0, dict) == 0);
 				break;
 			/* AND: true only if all subexpressions are true. */
 			case PBG_OP_AND:
 				for(int i = 0; i < size; i++)
-					if(pbg_evaluate_r(e, e->_static + children[i], dict) == 0)
+					if(pbg_evaluate_r(e, get_child(e, children[i]), dict) == 0)
 						return 0;
 				return 1;
 				break;
 			/* OR: true if any of the subexpressions are true. */
 			case PBG_OP_OR:
 				for(int i = 0; i < size; i++)
-					if(pbg_evaluate_r(e, e->_static + children[i], dict) == 1)
+					if(pbg_evaluate_r(e, get_child(e, children[i]), dict) == 1)
 						return 1;
 				return 0;
 				break;
@@ -408,44 +407,45 @@ int pbg_evaluate_r(pbg_expr* e, pbg_expr_node* node, pbg_expr* (*dict)(char*, in
 				/* Ensure type and size of all children are identical. */
 				for(int i = 1; i < size; i++) {
 					childi = get_child(e, children[i]);
-					if(childi->_type != child0->_type || 
-							childi->_int != child0->_int)
+					if(childi->_int != child0->_int || 
+							childi->_type != child0->_type)
 						return 0;
-				}
-				
-				/* Ensure each data byte is identical. */
-				for(int i = 1; i < size; i++)
-					for(int j = 0; j < child0->_int; j++) {
-						childi = get_child(e, children[i]);
+					/* Ensure each data byte is identical. */
+					for(int j = 0; j < child0->_int; j++)
 						if(((char*)child0->_data)[j] != ((char*)childi->_data)[j])
 							return 0;
-					}
+				}
 				return 1;
 				break;
 			/* LT: true only if the first child is less than the second. */
 			case PBG_OP_LT:
+				child1 = get_child(e, children[1]);
 				return *((double*)child0->_data) < *((double*)child1->_data);
 				break;
 			/* GT: true only if the first child is greater than the second. */
 			case PBG_OP_GT:
+				child1 = get_child(e, children[1]);
 				return *((double*)child0->_data) > *((double*)child1->_data);
 				break;
 			/* EXST: true only if the KEY exists in the given dictionary. */
 			case PBG_OP_EXST:
-				return dict((char*) node->_data, node->_int) != NULL;
+				return dict((char*) child0->_data, node->_int) != NULL;
 				break;
 			/* NEQ: true only if the two children are different. */
 			case PBG_OP_NEQ:
+				child1 = get_child(e, children[1]);
 				return child1->_type != child0->_type || 
 						child1->_int != child0->_int || 
 						strncmp(child1->_data, child0->_data, child0->_int);
 				break;
 			/* LTE: true only if the first child is at most the second. */
 			case PBG_OP_LTE:
+				child1 = get_child(e, children[1]);
 				return *((double*)child0->_data) <= *((double*)child1->_data);
 				break;
 			/* GTE: true only if the first child is at least the second. */
 			case PBG_OP_GTE:
+				child1 = get_child(e, children[1]);
 				return *((double*)child0->_data) >= *((double*)child1->_data);
 				break;
 		}

@@ -6,8 +6,6 @@
 #ifndef __PBG_H__
 #define __PBG_H__
 
-#include <stdint.h>
-
 /**
  * These are the PBG operators supported by this implementation. They can be
  * cross-referenced with the grammar pseudocode above. Note: some values are
@@ -65,9 +63,9 @@ typedef struct {
  * This struct represents a PBG DATE literal.
  */
 typedef struct {
-	unsigned int   _YYYY;  /* year */
-	unsigned char  _MM;    /* month */
-	unsigned char  _DD;    /* day */
+	unsigned int  _YYYY;  /* year */
+	unsigned int  _MM;    /* month */
+	unsigned int  _DD;    /* day */
 } pbg_type_date;
 
 /**
