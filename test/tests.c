@@ -4,7 +4,7 @@
 #include "../pbg.h"
 
 #define PBG_RESULT(name,num) if((num) == 0) printf("%s:\tPassed!\n", name); else printf("%s:\t%d tests failed!\n", name, (num)); result = 0
-#define PBG_ERROR(err) printf("error in %s @ line %d: %s\n", err._file, err._line, pbg_error_str(err._type)); return 1;
+#define PBG_ERROR(err) printf("error in %s @ line %d: %s\n", err._file, err._line, pbg_error_str(err._type));
 
 /* This is a dictionary used for testing purposes. 
  * It defines keys [a]=5.0, [b]=5.0, and [c]=6.0. */
@@ -43,15 +43,15 @@ int test_pbg_evaluate(char* str, int expected)
 	pbg_error err = (pbg_error) { PBG_ERR_NONE, 0, NULL };
 	pbg_parse(&e, &err, str, strlen(str));
 	if(err._type != PBG_ERR_NONE) {
-		if(expected == -1)
-			return 0;
 		PBG_ERROR(err);
+		pbg_error_free(&err);
+		return expected != -1;
 	}
 	int result = pbg_evaluate(&e, &err, test_dict) != expected;
 	if(err._type != PBG_ERR_NONE) {
-		if(expected == -1)
-			return 0;
 		PBG_ERROR(err);
+		pbg_error_free(&err);
+		return expected != -1;
 	}
 	if(result == 1)
 		printf("failed: \"%s\", expected=%d\n", str, expected);
@@ -66,12 +66,14 @@ int test_pbg_parse(char* str)
 	pbg_parse(&e, &err, str, strlen(str));
 	if(err._type != PBG_ERR_NONE) {
 		PBG_ERROR(err);
+		pbg_error_free(&err);
+		return 1;
 	}
 	char* getstr = pbg_gets(&e, NULL, 0);
 	printf("%s\n", getstr);
 	free(getstr);
 	pbg_free(&e);
-	return 1;
+	return 0;
 }
 
 int test_pbg_print(char* str) 
@@ -188,6 +190,9 @@ int main()
 	/* pbg_evaluate */
 	result = 0;
 	result += test_pbg_evaluate("(=,'hello,'hi')", -1);
+	result += test_pbg_evaluate("((TRUE))", -1);
+	result += test_pbg_evaluate("(!,FALSE", -1);
+	result += test_pbg_evaluate("(TRUE)(FALSE)", -1);
 	/* NOT */
 	result += test_pbg_evaluate("(!,FALE)", -1);
 	result += test_pbg_evaluate("(!,FALSE)", 1);
@@ -204,7 +209,7 @@ int main()
 	result += test_pbg_evaluate("(&,TRUE,TRUE,TRUE,TRUE,TRUE)", 1);
 	result += test_pbg_evaluate("(&,TRUE,TRUE,TRUE,FALSE,TRUE)", 0);
 	/* OR */
-//	result += test_pbg_evaluate("(|)", -1);  /* Segmentation fault. */
+	result += test_pbg_evaluate("(|)", -1);
 	result += test_pbg_evaluate("(|,TRUE)", -1);
 	result += test_pbg_evaluate("(|,TRUE,TRUE)", 1);
 	result += test_pbg_evaluate("(|,TRUE,FALSE)", 1);
@@ -213,6 +218,10 @@ int main()
 	result += test_pbg_evaluate("(|,FALSE,FALSE,FALSE,FALSE,FALSE)", 0);
 	result += test_pbg_evaluate("(|,FALSE,TRUE,FALSE,FALSE,FALSE)", 1);
 	/* EXST */
+//	result += test_pbg_evaluate("a", -1);  /* memory errors */
+	result += test_pbg_evaluate("(?)", -1);
+	result += test_pbg_evaluate("(?,)", -1);
+	result += test_pbg_evaluate("(?,,,)", -1);
 	result += test_pbg_evaluate("(?,[a],[b])", -1);
 	result += test_pbg_evaluate("(?,[a])", 1);
 	result += test_pbg_evaluate("(?,[b])", 1);

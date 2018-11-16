@@ -39,16 +39,8 @@ pbg_expr_node* pbg_get_node(pbg_expr* e, int index)
  */
 void pbg_free_node(pbg_expr_node* node)
 {
-	/* These are literals and operators for which _data is not malloc'd. */
-	if(node->_type == PBG_LT_TRUE)
-		return;
-	if(node->_type == PBG_LT_FALSE)
-		return;
-	if(node->_type == PBG_UNKNOWN)
-		return;
-	
-	/* For anything else, _data is malloc'd. Free it. */
-	free(node->_data);
+	if(node->_data != NULL)
+		free(node->_data);
 }
 
 void pbg_err_alloc(pbg_error* err, int line, char* file)
@@ -74,7 +66,7 @@ void pbg_err_syntax(pbg_error* err, int line, char* file, char* msg)
 	err->_type = PBG_ERR_SYNTAX;
 	err->_line = line;
 	err->_file = file;
-	err->_int = strlen(msg);
+	err->_int = 0;
 	err->_data = msg;
 }
 
@@ -83,8 +75,8 @@ void pbg_err_op_arity(pbg_error* err, int line, char* file, pbg_node_type type, 
 	err->_type = PBG_ERR_OP_ARITY;
 	err->_line = line;
 	err->_file = file;
-	err->_int = arity;
-	err->_data = malloc(sizeof(pbg_node_type));
+	err->_int = sizeof(pbg_node_type);
+	err->_data = malloc(err->_int);
 	if(err->_data == NULL) {
 		pbg_err_alloc(err, __LINE__, __FILE__);  /* wtf?? */
 		return;
@@ -97,7 +89,7 @@ void pbg_err_state(pbg_error* err, int line, char* file, char* msg)
 	err->_type = PBG_ERR_STATE;
 	err->_line = line;
 	err->_file = file;
-	err->_int = strlen(msg);
+	err->_int = 0;
 	err->_data = msg;
 }
 
@@ -110,6 +102,11 @@ void pbg_err_op_arg_type(pbg_error* err, int line, char* file)
 	err->_data = NULL;
 }
 
+void pbg_error_free(pbg_error* err)
+{
+	if(err->_int != 0)
+		free(err->_data);
+}
 
 /**********************
  * Core API Functions *
@@ -137,24 +134,24 @@ int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str,
 	
 	/* This field is an operator. */
 	if(type > PBG_MAX_LT && type < PBG_MAX_OP) {
+		/* Allocate memory for pointers to children nodes. */
+		int maxchildren = 2;
+		int* children = (int*) malloc(maxchildren * sizeof(int));
+		if(children == NULL) {
+			pbg_err_alloc(err, __LINE__, __FILE__);
+			return 0;
+		}
+		
 		/* Initialize node and record node index. */
 		nodeidx = 1 + e->_staticsz++;  /* Static nodes start at 1. */
 		node = pbg_get_node(e, nodeidx);
 		node->_type = type;
 		node->_int = 0;
+		node->_data = (void*) children;
 		
 		/* We've processed this field. Move on to the next one! */
 		(*fields)++;
 		(*lengths)++;
-		
-		/* Allocate memory for pointers to children nodes. */
-		int maxchildren = 2;
-		int* children = (int*) malloc(maxchildren * sizeof(int));
-		if(children == NULL) {
-			e->_staticsz--;  /* malloc failed, do not free. */
-			pbg_err_alloc(err, __LINE__, __FILE__);
-			return 0;
-		}
 		
 		/* Recursively build subtree rooted at this operator node. */
 		/* pbg_evaluate set last element in fields to -1. This is used to
@@ -172,6 +169,7 @@ int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str,
 					pbg_err_alloc(err, __LINE__, __FILE__);
 					return 0;
 				}
+				node->_data = (void*) children;
 			}
 			/* Store index of child node. */
 			children[node->_int++] = childidx;
@@ -315,11 +313,22 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 {
 	// TODO verify str is an element of PBG (syntactically, not semantically)
 	
+	/* Set to NULL to allow for pbg_free to check if needing free. */
+	e->_static = NULL;
+	e->_dynamic = NULL;
+	
+	/* These are initialized to 0 as they are used as counters for the number 
+	 * of each type of node created. In the end they should be equal to the 
+	 * associated local variables here. */
+	e->_staticsz = 0;
+	e->_dynamicsz = 0;
+	
 	/* Count number of non-STRING commas, keys, and closing braces. */
 	int numcommas = 0;
 	int numkeys = 0;
 	int numclosings = 0;
 	int instring = 0;
+	int depth = 0, reachedend = 0;
 	for(int i = 0; i < n; i++) {
 		/* Check if we're in a string or not. */
 		if((!instring && str[i] == '\'') || 
@@ -327,15 +336,34 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 			instring = 1 - instring;
 		/* Nothing gets counted if we are in a string! */
 		if(!instring) {
-			if(str[i] == ',') numcommas++;
+			if(str[i] == '(') depth++;
+			else if(str[i] == ',') numcommas++;
 			else if(str[i] == '[') numkeys++;
-			else if(str[i] == ')') numclosings++;
+			else if(str[i] == ')') {
+				numclosings++, depth--;
+				/* Negative depth only occurs if unmatched closing parentheses. */
+				if(depth < 0) {
+					pbg_err_syntax(err, __LINE__, __FILE__, "Unmatched closing parentheses.");
+					return;
+				}
+				/* Depth zero only legally occurs at the end. */
+				if(depth == 0 && !reachedend)
+					reachedend = 1;
+				else if(depth == 0 && reachedend) {
+					pbg_err_syntax(err, __LINE__, __FILE__, "Multiple statements.");
+					return;
+				}
+			}
 		}
 	}
 	
-	/* Check for errors. */
+	/* Check if string is left unbounded. */
 	if(instring) {
 		pbg_err_syntax(err, __LINE__, __FILE__, "Unclosed string.");
+		return;
+	}
+	if(depth != 0) {
+		pbg_err_syntax(err, __LINE__, __FILE__, "Unmatched opening parentheses.");
 		return;
 	}
 	
@@ -385,13 +413,17 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 	
 	/* Allocate space for static and dynamic node arrays. */
 	e->_static = (pbg_expr_node*) malloc(numstatic * sizeof(pbg_expr_node));
+	if(e->_static == NULL) {
+		free(fields), free(lengths), free(closings);
+		pbg_err_alloc(err, __LINE__, __FILE__);
+		return;
+	}
 	e->_dynamic = (pbg_expr_node*) malloc(numdynamic * sizeof(pbg_expr_node));
-	
-	/* These are initialized to 0 as they are used as counters for the number 
-	 * of each type of node created. In the end they should be equal to the 
-	 * associated local variables here. */
-	e->_staticsz = 0;
-	e->_dynamicsz = 0;
+	if(e->_dynamic == NULL) {
+		free(fields), free(lengths), free(closings);
+		pbg_err_alloc(err, __LINE__, __FILE__);
+		return;
+	}
 	
 	/* Recursively parse the expression string to build the expression tree. */
 	int* lengths_cpy = lengths, *closings_cpy = closings, *fields_cpy = fields;
@@ -577,8 +609,10 @@ void pbg_free(pbg_expr* e)
 		pbg_free_node(e->_dynamic+i);
 	
 	/* Free internal node arrays. */
-	free(e->_static);
-	free(e->_dynamic);
+	if(e->_static != NULL)
+		free(e->_static);
+	if(e->_static != NULL)
+		free(e->_dynamic);
 }
 
 /**
