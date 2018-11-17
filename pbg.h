@@ -53,6 +53,13 @@ typedef struct {
 char* pbg_error_str(pbg_error_type type);
 
 /**
+ * Prints a human-readable representation of the given pbg_error to the
+ * standard output.
+ * @param err  Error to print.
+ */
+void pbg_error_print(pbg_error* err);
+
+/**
  * Frees resources being used by the given error, if any. This function does
  * not free the provided pointer.
  * @param e  PBG error to clean up.

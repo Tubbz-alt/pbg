@@ -19,7 +19,8 @@
 void pbg_err_print_reset(pbg_error* err)
 {
 	if(err->_type != PBG_ERR_NONE) {
-		printf("---error %s at %s:%d\n", pbg_error_str(err->_type), err->_file, err->_line);
+		printf("---");
+		pbg_error_print(err);
 		pbg_error_free(err);
 		err->_type = PBG_ERR_NONE;
 	}

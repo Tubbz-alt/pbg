@@ -91,6 +91,20 @@ void pbg_free_node(pbg_expr_node* node)
  *                    *
  **********************/
 
+void pbg_error_print(pbg_error* err)
+{
+	if(err->_type == PBG_ERR_NONE)
+		return;
+	printf("error %s at %s:%d", pbg_error_str(err->_type), err->_file, err->_line);
+	switch(err->_type) {
+		case PBG_ERR_SYNTAX:
+		case PBG_ERR_STATE:
+			printf(": %s", (char*) err->_data);
+			break;
+	}
+	printf("\n");
+}
+
 void pbg_err_alloc(pbg_error* err, int line, char* file)
 {
 	err->_type = PBG_ERR_ALLOC;
