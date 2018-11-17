@@ -1,5 +1,5 @@
 tests:
-	gcc test/tests.c pbg.c -o test/tests -g
+	gcc test/pbg_test.c pbg.c -o test/tests -g
 
 clean:
-	rm -rf test/tests.exe test/tests
+	rm -rf test/tests test/tests
