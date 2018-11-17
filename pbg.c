@@ -3,11 +3,11 @@
 #include <stdio.h>
 #include <string.h>
 
-/**********************
- *                    *
- * FUNCTION DIRECTORY *
- *                    *
- **********************/
+/****************************
+ *                          *
+ * LOCAL FUNCTION DIRECTORY *
+ *                          *
+ ****************************/
 
 /* NODE MANAGEMENT */
 pbg_expr_node* pbg_get_node(pbg_expr* e, int index);

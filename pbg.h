@@ -6,6 +6,13 @@
 #ifndef __PBG_H__
 #define __PBG_H__
 
+
+/************************
+ *                      *
+ * ERROR REPRESENTATION *
+ *                      *
+ ************************/
+
 /**
  * These are type specifiers for all possible PBG errors.
  */
@@ -31,9 +38,17 @@ typedef struct {
 	void*           _data;  /* Data to be included with error report. */
 } pbg_error;
 
+
+/******************
+ *                *
+ * ERROR HANDLING *
+ *                *
+ ******************/
+
 /**
  * Translates the given pbg_error_type to a human-readable string.
  * @param type  PBG error type to translate.
+ * @return String representation of the given error type.
  */
 char* pbg_error_str(pbg_error_type type);
 
@@ -43,6 +58,13 @@ char* pbg_error_str(pbg_error_type type);
  * @param e  PBG error to clean up.
  */
 void pbg_error_free(pbg_error* e);
+
+
+/*****************************
+ *                           *
+ * EXPRESSION REPRESENTATION *
+ *                           *
+ *****************************/
 
 /**
  * These are the PBG operators supported by this implementation. They can be
@@ -98,21 +120,12 @@ typedef struct {
 	int             _dynamicsz;  /* Number of dynamic nodes. */
 } pbg_expr;
 
-/**
- * This struct represents a PBG DATE literal.
- */
-typedef struct {
-	unsigned int  _YYYY;  /* year */
-	unsigned int  _MM;    /* month */
-	unsigned int  _DD;    /* day */
-} pbg_type_date;
 
-
-/**********************
- *                    *
- * Core API functions *
- *                    *
- **********************/
+/*************************************
+ *                                   *
+ * EXPRESSION CREATION & DESTRUCTION *
+ *                                   *
+ *************************************/
 
 /**
  * Parses the string as a boolean expression in Prefix Boolean Grammar.
@@ -124,6 +137,20 @@ typedef struct {
 void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n);
 
 /**
+ * Destroys the PBG expression instance and frees all associated resources.
+ * This function does not free the provided pointer.
+ * @param e PBG expression to destroy.
+ */
+void pbg_free(pbg_expr* e);
+
+
+/*************************
+ *                       *
+ * EXPRESSION EVALUATION *
+ *                       *
+ *************************/
+
+/**
  * Evaluates the Prefix Boolean Expression with the provided assignments.
  * @param e    PBG expression to evaluate.
  * @param err  Container to store error, if any occurs.
@@ -133,12 +160,12 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n);
  */
 int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_expr_node (*dict)(char*, int));
 
-/**
- * Destroys the PBG expression instance and frees all associated resources.
- * This function does not free the provided pointer.
- * @param e PBG expression to destroy.
- */
-void pbg_free(pbg_expr* e);
+
+/***********************
+ *                     *
+ * EXPRESSION PRINTING *
+ *                     *
+ ***********************/
 
 /**
  * Prints the Prefix Boolean Expression to the char pointer provided. If ptr is
@@ -160,11 +187,11 @@ char* pbg_gets(pbg_expr* e, char** bufptr, int n);
 void pbg_print(pbg_expr* e);
 
 
-/*************************************
- *                                   *
- * Conversion and checking functions *
- *                                   *
- *************************************/
+/******************************************
+ *                                        *
+ * CONVERSION AND TYPE CHECKING FUNCTIONS *
+ *                                        *
+ ******************************************/
 
 /** 
  * Identifies the PBG expression type of the given string. This function works
@@ -217,6 +244,15 @@ int pbg_iskey(char* str, int n);
 int pbg_isstring(char* str, int n);
 
 /**
+ * This struct represents a PBG DATE literal.
+ */
+typedef struct {
+	unsigned int  _YYYY;  /* year */
+	unsigned int  _MM;    /* month */
+	unsigned int  _DD;    /* day */
+} pbg_type_date;
+
+/**
  * Checks if the given string encodes a valid PBG DATE literal.
  * @param str String encoding of PBG DATE.
  * @param n   Length of the string.
@@ -231,5 +267,6 @@ int pbg_isdate(char* str, int n);
  * @param n   Length of string to parse.
  */
 void pbg_todate(pbg_type_date* ptr, char* str, int n);
+
 
 #endif  /* __PBG_H__ */
