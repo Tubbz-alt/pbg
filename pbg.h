@@ -227,14 +227,6 @@ int pbg_istrue(char* str, int n);
 int pbg_isfalse(char* str, int n);
 
 /**
- * Checks if the given string encodes a valid PBG NUMBER literal.
- * @param str String encoding of PBG NUMBER.
- * @param n   Length of the string.
- * @return 1 if str encodes a valid PBG NUMBER literal, 0 otherwise.
- */
-int pbg_isnumber(char* str, int n);
-
-/**
  * Checks if the given string encodes a valid PBG KEY identifier.
  * @param str String encoding of PBG KEY.
  * @param n   Length of the string.
@@ -251,13 +243,36 @@ int pbg_iskey(char* str, int n);
 int pbg_isstring(char* str, int n);
 
 /**
+ * This struct represents a PBG NUMBER literal.
+ */
+typedef struct {
+	double _val;
+} pbg_number_lt;
+
+/**
+ * Checks if the given string encodes a valid PBG NUMBER literal.
+ * @param str String encoding of PBG NUMBER.
+ * @param n   Length of the string.
+ * @return 1 if str encodes a valid PBG NUMBER literal, 0 otherwise.
+ */
+int pbg_isnumber(char* str, int n);
+
+/**
+ * Converts the string to a PBG NUMBER literal.
+ * @param ptr PBG DATA struct to store conversion.
+ * @param str String to parse.
+ * @param n   Length of string to parse.
+ */
+void pbg_tonumber(pbg_number_lt* ptr, char* str, int n);
+
+/**
  * This struct represents a PBG DATE literal.
  */
 typedef struct {
 	unsigned int  _YYYY;  /* year */
 	unsigned int  _MM;    /* month */
 	unsigned int  _DD;    /* day */
-} pbg_type_date;
+} pbg_date_lt;
 
 /**
  * Checks if the given string encodes a valid PBG DATE literal.
@@ -273,7 +288,7 @@ int pbg_isdate(char* str, int n);
  * @param str String to parse.
  * @param n   Length of string to parse.
  */
-void pbg_todate(pbg_type_date* ptr, char* str, int n);
+void pbg_todate(pbg_date_lt* ptr, char* str, int n);
 
 
 #endif  /* __PBG_H__ */

@@ -208,7 +208,7 @@ int pbg_create_lt_key(pbg_expr* e, pbg_error* err, char* str, int n)
 		return 0;
 	}
 	memcpy(node->_data, str+1, n-2);
-	// TODO ensure each key node in dynamic is unique?
+	// TODO ensure each key node in e->_dynamic is unique?
 	/* Done! */
 	return nodei;
 }
@@ -220,13 +220,13 @@ int pbg_create_lt_date(pbg_expr* e, pbg_error* err, char* str, int n)
 	/* Initialize node! */
 	pbg_expr_node* node = pbg_get_node(e, nodei);
 	node->_type = PBG_LT_DATE;
-	node->_int = sizeof(pbg_type_date);
+	node->_int = sizeof(pbg_date_lt);
 	node->_data = malloc(node->_int);
 	if(node->_data == NULL) {
 		pbg_err_alloc(err, __LINE__, __FILE__);
 		return 0;
 	}
-	pbg_todate((pbg_type_date*)node->_data, str, n);
+	pbg_todate((pbg_date_lt*)node->_data, str, n);
 	/* Done! */
 	return nodei;
 }
@@ -238,13 +238,13 @@ int pbg_create_lt_number(pbg_expr* e, pbg_error* err, char* str, int n)
 	/* Initialize node! */
 	pbg_expr_node* node = pbg_get_node(e, nodei);
 	node->_type = PBG_LT_NUMBER;
-	node->_int = sizeof(double);
+	node->_int = sizeof(pbg_number_lt);
 	node->_data = malloc(node->_int);
 	if(node->_data == NULL) {
 		pbg_err_alloc(err, __LINE__, __FILE__);
 		return 0;
 	}
-	*((double*)node->_data) = atof(str);
+	pbg_tonumber((pbg_number_lt*)node->_data, str, n);
 	/* Done! */
 	return nodei;
 }
@@ -655,7 +655,8 @@ int pbg_evaluate_op_lt(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 		pbg_err_op_arg_type(err, __LINE__, __FILE__);
 		return -1;
 	}
-	return *((double*)childn0->_data) < *((double*)childn1->_data);
+	return ((pbg_number_lt*)childn0->_data)->_val <
+			((pbg_number_lt*)childn1->_data)->_val;
 }
 
 int pbg_evaluate_op_gt(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
@@ -670,7 +671,8 @@ int pbg_evaluate_op_gt(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 		pbg_err_op_arg_type(err, __LINE__, __FILE__);
 		return -1;
 	}
-	return *((double*)childn0->_data) > *((double*)childn1->_data);
+	return ((pbg_number_lt*)childn0->_data)->_val > 
+			((pbg_number_lt*)childn1->_data)->_val;
 }
 
 int pbg_evaluate_op_lte(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
@@ -685,7 +687,8 @@ int pbg_evaluate_op_lte(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 		pbg_err_op_arg_type(err, __LINE__, __FILE__);
 		return -1;
 	}
-	return *((double*)childn0->_data) <= *((double*)childn1->_data);
+	return ((pbg_number_lt*)childn0->_data)->_val <= 
+			((pbg_number_lt*)childn1->_data)->_val;
 }
 
 int pbg_evaluate_op_gte(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
@@ -700,7 +703,8 @@ int pbg_evaluate_op_gte(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 		pbg_err_op_arg_type(err, __LINE__, __FILE__);
 		return -1;
 	}
-	return *((double*)childn0->_data) >= *((double*)childn1->_data);
+	return ((pbg_number_lt*)childn0->_data)->_val >= 
+			((pbg_number_lt*)childn1->_data)->_val;
 }
 
 /**
@@ -814,7 +818,7 @@ int pbg_gets_r(pbg_expr* e, pbg_expr_node* node, char* buf, int i)
 	if(node->_type < PBG_MAX_LT)
 	{
 		char* data;
-		pbg_type_date* dt;
+		pbg_date_lt* dt;
 		switch(node->_type) {
 			case PBG_LT_TRUE:
 				buf[i++] = 'T';
@@ -837,7 +841,7 @@ int pbg_gets_r(pbg_expr* e, pbg_expr_node* node, char* buf, int i)
 				buf[i++] = '\'';
 				break;
 			case PBG_LT_DATE:
-				dt = (pbg_type_date*) node->_data;
+				dt = (pbg_date_lt*) node->_data;
 				i += snprintf(buf+i, 5, "%04d", dt->_YYYY);
 				buf[i++] = '-';
 				i += snprintf(buf+i, 3, "%02d", dt->_MM);
@@ -906,7 +910,7 @@ void pbg_print_h(pbg_expr* e, pbg_expr_node* node, int depth)
 	for(int i = 0; i < depth; i++)
 		printf("  ");
 	if(node->_type < PBG_MAX_LT) {
-		pbg_type_date* date;
+		pbg_date_lt* date;
 		switch(node->_type) {
 			case PBG_LT_TRUE:
 				printf("TRUE\n");
@@ -924,7 +928,7 @@ void pbg_print_h(pbg_expr* e, pbg_expr_node* node, int depth)
 				printf("'\n");
 				break;
 			case PBG_LT_DATE:
-				date = (pbg_type_date*)node->_data;
+				date = (pbg_date_lt*)node->_data;
 				printf("DATE : %4d-%2d-%2d\n", date->_YYYY, date->_MM, date->_DD);
 				break;
 			case PBG_LT_KEY:
@@ -1085,6 +1089,11 @@ int pbg_isnumber(char* str, int n)
 	return 1;
 }
 
+void pbg_tonumber(pbg_number_lt* ptr, char* str, int n)
+{
+	ptr->_val = atof(str);
+}
+
 int pbg_iskey(char* str, int n)
 {
 	return str[0] == '[' && str[n-1] == ']';
@@ -1110,7 +1119,7 @@ int pbg_isdate(char* str, int n)
 		str[9] >= '0' && str[9] <= '9';
 }
 
-void pbg_todate(pbg_type_date* ptr, char* str, int n)
+void pbg_todate(pbg_date_lt* ptr, char* str, int n)
 {
 	/* Year. */
 	ptr->_YYYY = (str[0]-'0')*1000 + (str[1]-'0')*100 + (str[2]-'0')*10 + (str[3]-'0');
