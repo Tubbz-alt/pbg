@@ -152,20 +152,65 @@ int suite_evaluate()
 	check(test_evaluate(&err, "(< 2 3)", dict, TRUE));
 	check(test_evaluate(&err, "(< 3 3)", dict, FALSE));
 	check(test_evaluate(&err, "(< -3 3)", dict, TRUE));
+	check(test_evaluate(&err, "(< 'a' 'a')", dict, FALSE));
+	check(test_evaluate(&err, "(< 'a' 'b')", dict, TRUE));
+	check(test_evaluate(&err, "(< 'b' 'a')", dict, FALSE));
+	check(test_evaluate(&err, "(< 'aaa' 'aab')", dict, TRUE));
+	check(test_evaluate(&err, "(< 2018-10-12 2018-10-12)", dict, FALSE));
+	check(test_evaluate(&err, "(< 2018-10-11 2018-10-12)", dict, TRUE));
+	check(test_evaluate(&err, "(< 2018-10-12 2018-10-11)", dict, FALSE));
+	check(test_evaluate(&err, "(< 2018-09-12 2018-10-12)", dict, TRUE));
+	check(test_evaluate(&err, "(< 2018-09-12 2018-10-12)", dict, TRUE));
+	check(test_evaluate(&err, "(< 2018-10-12 2018-09-12)", dict, FALSE));
+	check(test_evaluate(&err, "(< 2017-10-12 2018-10-12)", dict, TRUE));
+	check(test_evaluate(&err, "(< 2018-10-12 2017-10-12)", dict, FALSE));
 	/* GREATER THAN */
 	check(test_evaluate(&err, "(> 3 2)", dict, TRUE));
 	check(test_evaluate(&err, "(> 3 3)", dict, FALSE));
 	check(test_evaluate(&err, "(> 3 -3)", dict, TRUE));
+	check(test_evaluate(&err, "(> 'a' 'a')", dict, FALSE));
+	check(test_evaluate(&err, "(> 'a' 'b')", dict, FALSE));
+	check(test_evaluate(&err, "(> 'b' 'a')", dict, TRUE));
+	check(test_evaluate(&err, "(> 'aaa' 'aab')", dict, FALSE));
+	check(test_evaluate(&err, "(> 2018-10-12 2018-10-12)", dict, FALSE));
+	check(test_evaluate(&err, "(> 2018-10-11 2018-10-12)", dict, FALSE));
+	check(test_evaluate(&err, "(> 2018-10-12 2018-10-11)", dict, TRUE));
+	check(test_evaluate(&err, "(> 2018-09-12 2018-10-12)", dict, FALSE));
+	check(test_evaluate(&err, "(> 2018-10-12 2018-09-12)", dict, TRUE));
+	check(test_evaluate(&err, "(> 2017-10-12 2018-10-12)", dict, FALSE));
+	check(test_evaluate(&err, "(> 2018-10-12 2017-10-12)", dict, TRUE));
 	/* LESS THAN OR EQUAL */
 	check(test_evaluate(&err, "(<= 2 3)", dict, TRUE));
 	check(test_evaluate(&err, "(<= 3 3)", dict, TRUE));
 	check(test_evaluate(&err, "(<= -3 3)", dict, TRUE));
 	check(test_evaluate(&err, "(<= 3 -3)", dict, FALSE));
+	check(test_evaluate(&err, "(<= 'a' 'a')", dict, TRUE));
+	check(test_evaluate(&err, "(<= 'a' 'b')", dict, TRUE));
+	check(test_evaluate(&err, "(<= 'b' 'a')", dict, FALSE));
+	check(test_evaluate(&err, "(<= 'aaa' 'aab')", dict, TRUE));
+	check(test_evaluate(&err, "(<= 2018-10-12 2018-10-12)", dict, TRUE));
+	check(test_evaluate(&err, "(<= 2018-10-11 2018-10-12)", dict, TRUE));
+	check(test_evaluate(&err, "(<= 2018-10-12 2018-10-11)", dict, FALSE));
+	check(test_evaluate(&err, "(<= 2018-09-12 2018-10-12)", dict, TRUE));
+	check(test_evaluate(&err, "(<= 2018-10-12 2018-09-12)", dict, FALSE));
+	check(test_evaluate(&err, "(<= 2017-10-12 2018-10-12)", dict, TRUE));
+	check(test_evaluate(&err, "(<= 2018-10-12 2017-10-12)", dict, FALSE));
 	/* GREATER THAN OR EQUAL */
 	check(test_evaluate(&err, "(>= 3 2)", dict, TRUE));
 	check(test_evaluate(&err, "(>= 3 3)", dict, TRUE));
 	check(test_evaluate(&err, "(>= 3 -3)", dict, TRUE));
 	check(test_evaluate(&err, "(>= -3 3)", dict, FALSE));
+	check(test_evaluate(&err, "(>= 'a' 'a')", dict, TRUE));
+	check(test_evaluate(&err, "(>= 'a' 'b')", dict, FALSE));
+	check(test_evaluate(&err, "(>= 'b' 'a')", dict, TRUE));
+	check(test_evaluate(&err, "(>= 'aaa' 'aab')", dict, FALSE));
+	check(test_evaluate(&err, "(>= 2018-10-12 2018-10-12)", dict, TRUE));
+	check(test_evaluate(&err, "(>= 2018-10-11 2018-10-12)", dict, FALSE));
+	check(test_evaluate(&err, "(>= 2018-10-12 2018-10-11)", dict, TRUE));
+	check(test_evaluate(&err, "(>= 2018-09-12 2018-10-12)", dict, FALSE));
+	check(test_evaluate(&err, "(>= 2018-10-12 2018-09-12)", dict, TRUE));
+	check(test_evaluate(&err, "(>= 2017-10-12 2018-10-12)", dict, FALSE));
+	check(test_evaluate(&err, "(>= 2018-10-12 2017-10-12)", dict, TRUE));
 	
 	/* Whitespace insensitivity. */
 	check(test_evaluate(&err, "(>=  3  2)", dict, TRUE));

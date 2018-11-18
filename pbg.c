@@ -20,6 +20,8 @@ typedef struct {
 	unsigned int  _DD;    /* day */
 } pbg_date_lt;  /* PBG_LT_DATE */
 
+typedef char pbg_string_lt; /* PBG_LT_STRING */
+
 /* ERROR REPRESENTATIONS */
 typedef struct {
 	int            _arity;  /* Number of arguments given to operator. */
@@ -86,12 +88,17 @@ int pbg_evaluate_op_gte(pbg_expr* e, pbg_error* err, pbg_expr_node* node);
 /* CONVERSION & CHECKING TOOLKIT */
 int pbg_istrue(char* str, int n);
 int pbg_isfalse(char* str, int n);
-int pbg_isnumber(char* str, int n);
-void pbg_tonumber(pbg_number_lt* ptr, char* str, int n);
 int pbg_iskey(char* str, int n);
+int pbg_isnumber(char* str, int n);
 int pbg_isstring(char* str, int n);
 int pbg_isdate(char* str, int n);
+
+void pbg_tonumber(pbg_number_lt* ptr, char* str, int n);
 void pbg_todate(pbg_date_lt* ptr, char* str, int n);
+
+int pbg_cmpnumber(pbg_number_lt* n1, pbg_number_lt* n2);
+int pbg_cmpdate(pbg_date_lt* d1, pbg_date_lt* d2);
+int pbg_cmpstring(pbg_string_lt* s1, pbg_string_lt* s2, int n);
 
 /* HELPER FUNCTIONS */
 int pbg_isdigit(char c);
@@ -321,7 +328,7 @@ int pbg_create_lt_string(pbg_expr* e, pbg_error* err, char* str, int n)
 	/* Initialize node! */
 	pbg_expr_node* node = pbg_get_node(e, nodei);
 	node->_type = PBG_LT_STRING;
-	node->_int = (n-2) * sizeof(char);
+	node->_int = (n-2) * sizeof(pbg_string_lt);
 	node->_data = malloc(node->_int);
 	if(node->_data == NULL) {
 		pbg_err_alloc(err, __LINE__, __FILE__);
@@ -691,7 +698,7 @@ int pbg_evaluate_op_not(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 	int child0 = ((int*)node->_data)[0];
 	int result = pbg_evaluate_r(e, err, pbg_get_node(e, child0));
 	if(result == -1) return -1;  /* Pass error through. */
-	return result == 0;
+	return !result;
 }
 
 int pbg_evaluate_op_and(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
@@ -722,8 +729,8 @@ int pbg_evaluate_op_exst(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 {
 	PBG_UNUSED(err);
 	int child0 = ((int*)node->_data)[0];
-	pbg_expr_node* childn0 = pbg_get_node(e, child0);
-	return childn0->_type != PBG_UNKNOWN;
+	pbg_expr_node* c0 = pbg_get_node(e, child0);
+	return c0->_type != PBG_UNKNOWN;
 }
 
 int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
@@ -732,15 +739,15 @@ int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 	/* Ensure type and size of all children are identical. */
 	int size = node->_int;
 	int child0 = ((int*)node->_data)[0];
-	pbg_expr_node* childn0 = pbg_get_node(e, child0);
+	pbg_expr_node* c0 = pbg_get_node(e, child0);
 	for(int i = 1; i < size; i++) {
 		int childi = ((int*)node->_data)[i];
 		pbg_expr_node* childni = pbg_get_node(e, childi);
-		if(childni->_int != childn0->_int || 
-				childni->_type != childn0->_type)
+		if(childni->_int != c0->_int || 
+				childni->_type != c0->_type)
 			return 0;  /* FALSE! */
 		/* Ensure each data byte is identical. */
-		if(memcmp(childni->_data, childn0->_data, childn0->_int) != 0)
+		if(memcmp(childni->_data, c0->_data, c0->_int) != 0)
 			return 0;  /* FALSE! */
 	}
 	return 1;  /* TRUE! */
@@ -750,73 +757,107 @@ int pbg_evaluate_op_neq(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 {
 	PBG_UNUSED(err);
 	int child0 = ((int*)node->_data)[0], child1 = ((int*)node->_data)[1];
-	pbg_expr_node* childn0 = pbg_get_node(e, child0);
-	pbg_expr_node* childn1 = pbg_get_node(e, child1);
-	return childn1->_type != childn0->_type || 
-			childn1->_int != childn0->_int || 
-			memcmp(childn1->_data, childn0->_data, childn0->_int);
+	pbg_expr_node* c0 = pbg_get_node(e, child0);
+	pbg_expr_node* c1 = pbg_get_node(e, child1);
+	return c1->_type != c0->_type || 
+			c1->_int != c0->_int || 
+			memcmp(c1->_data, c0->_data, c0->_int);
 }
 
 int pbg_evaluate_op_lt(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 {
 	int child0 = ((int*)node->_data)[0], child1 = ((int*)node->_data)[1];
-	pbg_expr_node* childn0 = pbg_get_node(e, child0);
-	pbg_expr_node* childn1 = pbg_get_node(e, child1);
-	/* Ensure both children are NUMBERs. */
-	if(childn0->_type != PBG_LT_NUMBER || 
-			childn1->_type != PBG_LT_NUMBER) {
-		pbg_err_op_arg_type(err, __LINE__, __FILE__);
-		return -1;
+	pbg_expr_node* c0 = pbg_get_node(e, child0);
+	pbg_expr_node* c1 = pbg_get_node(e, child1);
+	/* Both are NUMBERs. */
+	if(c0->_type == PBG_LT_NUMBER &&
+			c1->_type == PBG_LT_NUMBER) {
+		return pbg_cmpnumber(c0->_data, c1->_data) < 0;
 	}
-	return ((pbg_number_lt*)childn0->_data)->_val <
-			((pbg_number_lt*)childn1->_data)->_val;
+	/* Both are DATEs. */
+	if(c0->_type == PBG_LT_DATE &&
+			c1->_type == PBG_LT_DATE) {
+		return pbg_cmpdate(c0->_data, c1->_data) < 0;
+	}
+	/* Both are STRINGs. */
+	if(c0->_type == PBG_LT_STRING &&
+			c1->_type == PBG_LT_STRING) {
+		return pbg_cmpstring(c0->_data, c1->_data, c0->_int) < 0;
+	}
+	pbg_err_op_arg_type(err, __LINE__, __FILE__);
+	return -1;
 }
 
 int pbg_evaluate_op_gt(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 {
 	int child0 = ((int*)node->_data)[0], child1 = ((int*)node->_data)[1];
-	pbg_expr_node* childn0 = pbg_get_node(e, child0);
-	pbg_expr_node* childn1 = pbg_get_node(e, child1);
-	/* Ensure both children are NUMBERs. */
-	if(childn0->_type != PBG_LT_NUMBER || 
-			childn1->_type != PBG_LT_NUMBER) {
-		pbg_err_op_arg_type(err, __LINE__, __FILE__);
-		return -1;
+	pbg_expr_node* c0 = pbg_get_node(e, child0);
+	pbg_expr_node* c1 = pbg_get_node(e, child1);
+	/* Both are NUMBERs. */
+	if(c0->_type == PBG_LT_NUMBER &&
+			c1->_type == PBG_LT_NUMBER) {
+		return pbg_cmpnumber(c0->_data, c1->_data) > 0;
 	}
-	return ((pbg_number_lt*)childn0->_data)->_val > 
-			((pbg_number_lt*)childn1->_data)->_val;
+	/* Both are DATEs. */
+	if(c0->_type == PBG_LT_DATE &&
+			c1->_type == PBG_LT_DATE) {
+		return pbg_cmpdate(c0->_data, c1->_data) > 0;
+	}
+	/* Both are STRINGs. */
+	if(c0->_type == PBG_LT_STRING &&
+			c1->_type == PBG_LT_STRING) {
+		return pbg_cmpstring(c0->_data, c1->_data, c0->_int) > 0;
+	}
+	pbg_err_op_arg_type(err, __LINE__, __FILE__);
+	return -1;
 }
 
 int pbg_evaluate_op_lte(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 {
-	int child0 = ((int*)node->_data)[0];
-	pbg_expr_node* childn0 = pbg_get_node(e, child0);
-	int child1 = ((int*)node->_data)[1];
-	pbg_expr_node* childn1 = pbg_get_node(e, child1);
-	/* Ensure both children are NUMBERs. */
-	if(childn0->_type != PBG_LT_NUMBER || 
-			childn1->_type != PBG_LT_NUMBER) {
-		pbg_err_op_arg_type(err, __LINE__, __FILE__);
-		return -1;
+	int child0 = ((int*)node->_data)[0], child1 = ((int*)node->_data)[1];
+	pbg_expr_node* c0 = pbg_get_node(e, child0);
+	pbg_expr_node* c1 = pbg_get_node(e, child1);
+	/* Both are NUMBERs. */
+	if(c0->_type == PBG_LT_NUMBER &&
+			c1->_type == PBG_LT_NUMBER) {
+		return pbg_cmpnumber(c0->_data, c1->_data) <= 0;
 	}
-	return ((pbg_number_lt*)childn0->_data)->_val <= 
-			((pbg_number_lt*)childn1->_data)->_val;
+	/* Both are DATEs. */
+	if(c0->_type == PBG_LT_DATE &&
+			c1->_type == PBG_LT_DATE) {
+		return pbg_cmpdate(c0->_data, c1->_data) <= 0;
+	}
+	/* Both are STRINGs. */
+	if(c0->_type == PBG_LT_STRING &&
+			c1->_type == PBG_LT_STRING) {
+		return pbg_cmpstring(c0->_data, c1->_data, c0->_int) <= 0;
+	}
+	pbg_err_op_arg_type(err, __LINE__, __FILE__);
+	return -1;
 }
 
 int pbg_evaluate_op_gte(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 {
-	int child0 = ((int*)node->_data)[0];
-	pbg_expr_node* childn0 = pbg_get_node(e, child0);
-	int child1 = ((int*)node->_data)[1];
-	pbg_expr_node* childn1 = pbg_get_node(e, child1);
-	/* Ensure both children are NUMBERs. */
-	if(childn0->_type != PBG_LT_NUMBER || 
-			childn1->_type != PBG_LT_NUMBER) {
-		pbg_err_op_arg_type(err, __LINE__, __FILE__);
-		return -1;
+	int child0 = ((int*)node->_data)[0], child1 = ((int*)node->_data)[1];
+	pbg_expr_node* c0 = pbg_get_node(e, child0);
+	pbg_expr_node* c1 = pbg_get_node(e, child1);
+	/* Both are NUMBERs. */
+	if(c0->_type == PBG_LT_NUMBER &&
+			c1->_type == PBG_LT_NUMBER) {
+		return pbg_cmpnumber(c0->_data, c1->_data) >= 0;
 	}
-	return ((pbg_number_lt*)childn0->_data)->_val >= 
-			((pbg_number_lt*)childn1->_data)->_val;
+	/* Both are DATEs. */
+	if(c0->_type == PBG_LT_DATE &&
+			c1->_type == PBG_LT_DATE) {
+		return pbg_cmpdate(c0->_data, c1->_data) >= 0;
+	}
+	/* Both are STRINGs. */
+	if(c0->_type == PBG_LT_STRING &&
+			c1->_type == PBG_LT_STRING) {
+		return pbg_cmpstring(c0->_data, c1->_data, c0->_int) >= 0;
+	}
+	pbg_err_op_arg_type(err, __LINE__, __FILE__);
+	return -1;
 }
 
 /**
@@ -1054,6 +1095,29 @@ void pbg_tonumber(pbg_number_lt* ptr, char* str, int n)
 {
 	PBG_UNUSED(n);
 	ptr->_val = atof(str);
+}
+
+int pbg_cmpnumber(pbg_number_lt* n1, pbg_number_lt* n2)
+{
+	if(n1->_val < n2->_val) return -1;
+	if(n1->_val > n2->_val) return 1;
+	return 0;
+}
+
+int pbg_cmpdate(pbg_date_lt* n1, pbg_date_lt* n2)
+{
+	if(n1->_YYYY < n2->_YYYY) return -1;
+	if(n1->_YYYY > n2->_YYYY) return 1;
+	if(n1->_MM < n2->_MM) return -1;
+	if(n1->_MM > n2->_MM) return 1;
+	if(n1->_DD < n2->_DD) return -1;
+	if(n1->_DD > n2->_DD) return 1;
+	return 0;
+}
+
+int pbg_cmpstring(pbg_string_lt* s1, pbg_string_lt* s2, int n)
+{
+	return strncmp(s1, s2, n);
 }
 
 int pbg_iskey(char* str, int n)
