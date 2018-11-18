@@ -190,6 +190,8 @@ int suite_evaluate()
 	check(test_evaluate(&err, ")(! TRUE)", dict, ERROR));
 	check(test_evaluate(&err, "((?))", dict, ERROR));
 	check(test_evaluate(&err, "(!(= 10 10))", dict, FALSE));
+	check(test_evaluate(&err, "(&(= 10 10)(= 20 20))", dict, TRUE));
+	check(test_evaluate(&err, "(&(?[a])(?[b]))", dict, TRUE));
 //	check(test_evaluate(&err, "((TRUE))", dict, ERROR));   // TODO should these be syntax errors?
 //	check(test_evaluate(&err, "((FALSE))", dict, ERROR));
 	

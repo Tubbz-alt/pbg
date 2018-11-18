@@ -560,7 +560,7 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 			}
 			/* It's literally anything else! */
 			else
-				while(!pbg_iswhitespace(str[i+1]) && 
+				while(!pbg_iswhitespace(str[i+1]) && str[i+1] != '[' && 
 						str[i+1] != '(' && str[i+1] != ')') i++;
 			numfields++;
 		}
@@ -631,7 +631,7 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 				do i++; while(!(str[i] == ']' && str[i-1] != '\\'));
 			/* It's literally anything else! */
 			else
-				while(!pbg_iswhitespace(str[i+1]) &&
+				while(!pbg_iswhitespace(str[i+1]) && str[i+1] != '[' && 
 						str[i+1] != '(' && str[i+1] != ')') i++;
 			/* Compute length of field. */
 			lengths[f] = i - fields[f] + 1, f++;
