@@ -49,6 +49,7 @@ void pbg_print_h(pbg_expr* e, pbg_expr_node* node, int depth);
 
 /* HELPER FUNCTIONS */
 int is_a_digit(char c);
+int is_whitespace(char c);
 
 
 /*******************
@@ -518,8 +519,16 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 		return;
 	}
 	
+	/* Remove leading whitespace. */
+	while(is_whitespace(*str)) str++;
+	/* Compute position of first field. */
+	if(str[0] == '(') {
+		int j = 1;
+		while(is_whitespace(str[j])) j++;
+		fields[0] = j;
+	}else
+		fields[0] = 0;
 	/* Compute position and lengths of each field & position of closings. */
-	fields[0] = (str[0] == '(') ? 1 : 0;
 	for(int i=fields[0], c=0, f=0, open=1, instring=0; i < n; i++) {
 		/* Check if we're in a string or not. */
 		if((!instring && str[i] == '\'') || 
@@ -527,12 +536,24 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 			instring = 1 - instring;
 		/* Nothing gets opened, closed, or measured if we're in a string! */
 		if(!instring) {
-			if(str[i] == ')')
-				closings[c] = i;
-			if(open && (str[i] == ')' || (str[i] == ',' && str[i-1] != ')')))
-				lengths[f] = i - fields[f], f++, open = 0;
-			if(!open && (str[i] == '(' || (str[i] == ',' && str[i+1] != '(')))
-				fields[f] = i+1, open = 1;
+			if(str[i] == ')') {
+				int j = i-1;
+				while(is_whitespace(str[j])) j--;
+				closings[c] = j+1;
+			}
+			if(open && (str[i] == ')' || (str[i] == ',' && str[i-1] != ')'))) {
+				int j = i-1;
+				while(is_whitespace(str[j])) j--;
+				lengths[f] = j+1 - fields[f];
+				f++;
+				open = 0;
+			}
+			if(!open && (str[i] == '(' || (str[i] == ',' && str[i+1] != '('))) {
+				int j = i+1;
+				while(is_whitespace(str[j])) j++;
+				fields[f] = j;
+				open = 1;
+			}
 		}
 	}
 	/* Needed to determine when we've reached the end of the expression string
@@ -1144,4 +1165,9 @@ void pbg_todate(pbg_date_lt* ptr, char* str, int n)
 int is_a_digit(char c)
 {
 	return c >= '0' && c <= '9';
+}
+
+int is_whitespace(char c)
+{
+	return c == ' ' || c == '\t';
 }

@@ -20,9 +20,9 @@ int main()
 
 
 /***************
- *             *
+ *			 *
  * TEST SUITES *
- *             *
+ *			 *
  ***************/
 
 /* This is a dictionary used for testing purposes. 
@@ -58,98 +58,108 @@ int suite_evaluate()
 	/* FALSE */
 	check(test_evaluate(&err, "(FALSE)", dict, FALSE));
 	/* NOT */
-    check(test_evaluate(&err, "(!,FALSE)", dict, TRUE));
-    check(test_evaluate(&err, "(!,TRUE)", dict, FALSE));
-    check(test_evaluate(&err, "(!,(=,10,10))", dict, FALSE));
-    check(test_evaluate(&err, "(!,(=,9,10))", dict, TRUE));
-    check(test_evaluate(&err, "(!,(!,(=,9,10)))", dict, FALSE));
-    /* AND */
-    check(test_evaluate(&err, "(&,TRUE,TRUE)", dict, TRUE));
-    check(test_evaluate(&err, "(&,TRUE,FALSE)", dict, FALSE));
-    check(test_evaluate(&err, "(&,FALSE,TRUE)", dict, FALSE));
-    check(test_evaluate(&err, "(&,FALSE,FALSE)", dict, FALSE));
-    check(test_evaluate(&err, "(&,TRUE,TRUE,TRUE,TRUE,TRUE)", dict, TRUE));
-    check(test_evaluate(&err, "(&,TRUE,TRUE,TRUE,FALSE,TRUE)", dict, FALSE));
-    /* OR */
-    check(test_evaluate(&err, "(|,TRUE,TRUE)", dict, TRUE));
-    check(test_evaluate(&err, "(|,TRUE,FALSE)", dict, TRUE));
-    check(test_evaluate(&err, "(|,FALSE,TRUE)", dict, TRUE));
-    check(test_evaluate(&err, "(|,FALSE,FALSE)", dict, FALSE));
-    check(test_evaluate(&err, "(|,FALSE,FALSE,FALSE,FALSE,FALSE)", dict, FALSE));
-    check(test_evaluate(&err, "(|,FALSE,TRUE,FALSE,FALSE,FALSE)", dict, TRUE));
-    /* EXST */
-    check(test_evaluate(&err, "(?,[c])", dict, TRUE));
-    check(test_evaluate(&err, "(?,[d])", dict, FALSE));
+	check(test_evaluate(&err, "(!,FALSE)", dict, TRUE));
+	check(test_evaluate(&err, "(!,FALSE)", dict, TRUE));
+	check(test_evaluate(&err, "(!,TRUE)", dict, FALSE));
+	check(test_evaluate(&err, "(!,(=,10,10))", dict, FALSE));
+	check(test_evaluate(&err, "(!,(=,9,10))", dict, TRUE));
+	check(test_evaluate(&err, "(!,(!,(=,9,10)))", dict, FALSE));
+	/* AND */
+	check(test_evaluate(&err, "(&,TRUE,TRUE)", dict, TRUE));
+	check(test_evaluate(&err, "(&,TRUE,FALSE)", dict, FALSE));
+	check(test_evaluate(&err, "(&,FALSE,TRUE)", dict, FALSE));
+	check(test_evaluate(&err, "(&,FALSE,FALSE)", dict, FALSE));
+	check(test_evaluate(&err, "(&,TRUE,TRUE,TRUE,TRUE,TRUE)", dict, TRUE));
+	check(test_evaluate(&err, "(&,TRUE,TRUE,TRUE,FALSE,TRUE)", dict, FALSE));
+	/* OR */
+	check(test_evaluate(&err, "(|,TRUE,TRUE)", dict, TRUE));
+	check(test_evaluate(&err, "(|,TRUE,FALSE)", dict, TRUE));
+	check(test_evaluate(&err, "(|,FALSE,TRUE)", dict, TRUE));
+	check(test_evaluate(&err, "(|,FALSE,FALSE)", dict, FALSE));
+	check(test_evaluate(&err, "(|,FALSE,FALSE,FALSE,FALSE,FALSE)", dict, FALSE));
+	check(test_evaluate(&err, "(|,FALSE,TRUE,FALSE,FALSE,FALSE)", dict, TRUE));
+	/* EXST */
+	check(test_evaluate(&err, "(?,[c])", dict, TRUE));
+	check(test_evaluate(&err, "(?,[d])", dict, FALSE));
 	/* EQUAL */
-    check(test_evaluate(&err, "(=,10,10)", dict, TRUE));
-    check(test_evaluate(&err, "(=,9,10)", dict, FALSE));
-    check(test_evaluate(&err, "(=,10,9)", dict, FALSE));
-    check(test_evaluate(&err, "(=,'hi',9)", dict, FALSE));
-    check(test_evaluate(&err, "(=,-10,'hi')", dict, FALSE));
-    check(test_evaluate(&err, "(=,-10,-10)", dict, TRUE));
-    check(test_evaluate(&err, "(=,'hi','hi')", dict, TRUE));
-    check(test_evaluate(&err, "(=,'a,b\\'c','a,b\\'c')", dict, TRUE));
-    check(test_evaluate(&err, "(=,'ab\\'c','ab\\'d')", dict, FALSE));
-    check(test_evaluate(&err, "(=,'hia','hi')", dict, FALSE));
-    check(test_evaluate(&err, "(=,'hi','h ')", dict, FALSE));
-    check(test_evaluate(&err, "(=,2018-10-12,'h ')", dict, FALSE));
-    check(test_evaluate(&err, "(=,2018-10-12,2018-10-12)", dict, TRUE));
-    check(test_evaluate(&err, "(=,2018-10-12,2018-10-13)", dict, FALSE));
-    check(test_evaluate(&err, "(=,2018-10-13,2018-10-12)", dict, FALSE));
-    check(test_evaluate(&err, "(=,2018-10-13,2017-10-13)", dict, FALSE));
-    check(test_evaluate(&err, "(=,2018-10-13,2018-11-13)", dict, FALSE));
-    check(test_evaluate(&err, "(=,[a],[a])", dict, TRUE));
-    check(test_evaluate(&err, "(=,[a],[b])", dict, TRUE));
-    check(test_evaluate(&err, "(=,[a],[c])", dict, FALSE));
-    check(test_evaluate(&err, "(=,[c],[b])", dict, FALSE));
-    check(test_evaluate(&err, "(=,TRUE,TRUE)", dict, TRUE));
-    check(test_evaluate(&err, "(=,TRUE,FALSE)", dict, FALSE));
-    check(test_evaluate(&err, "(=,FALSE,TRUE)", dict, FALSE));
-    check(test_evaluate(&err, "(=,FALSE,FALSE)", dict, TRUE));
+	check(test_evaluate(&err, "(=,10,10)", dict, TRUE));
+	check(test_evaluate(&err, "(=,9,10)", dict, FALSE));
+	check(test_evaluate(&err, "(=,10,9)", dict, FALSE));
+	check(test_evaluate(&err, "(=,'hi',9)", dict, FALSE));
+	check(test_evaluate(&err, "(=,-10,'hi')", dict, FALSE));
+	check(test_evaluate(&err, "(=,-10,-10)", dict, TRUE));
+	check(test_evaluate(&err, "(=,'hi','hi')", dict, TRUE));
+	check(test_evaluate(&err, "(=,'a,b\\'c','a,b\\'c')", dict, TRUE));
+	check(test_evaluate(&err, "(=,'ab\\'c','ab\\'d')", dict, FALSE));
+	check(test_evaluate(&err, "(=,'hia','hi')", dict, FALSE));
+	check(test_evaluate(&err, "(=,'hi','h ')", dict, FALSE));
+	check(test_evaluate(&err, "(=,2018-10-12,'h ')", dict, FALSE));
+	check(test_evaluate(&err, "(=,2018-10-12,2018-10-12)", dict, TRUE));
+	check(test_evaluate(&err, "(=,2018-10-12,2018-10-13)", dict, FALSE));
+	check(test_evaluate(&err, "(=,2018-10-13,2018-10-12)", dict, FALSE));
+	check(test_evaluate(&err, "(=,2018-10-13,2017-10-13)", dict, FALSE));
+	check(test_evaluate(&err, "(=,2018-10-13,2018-11-13)", dict, FALSE));
+	check(test_evaluate(&err, "(=,[a],[a])", dict, TRUE));
+	check(test_evaluate(&err, "(=,[a],[b])", dict, TRUE));
+	check(test_evaluate(&err, "(=,[a],[c])", dict, FALSE));
+	check(test_evaluate(&err, "(=,[c],[b])", dict, FALSE));
+	check(test_evaluate(&err, "(=,TRUE,TRUE)", dict, TRUE));
+	check(test_evaluate(&err, "(=,TRUE,FALSE)", dict, FALSE));
+	check(test_evaluate(&err, "(=,FALSE,TRUE)", dict, FALSE));
+	check(test_evaluate(&err, "(=,FALSE,FALSE)", dict, TRUE));
 	/* NEQ */
-    check(test_evaluate(&err, "(!=,10,10)", dict, FALSE));
-    check(test_evaluate(&err, "(!=,9,10)", dict, TRUE));
-    check(test_evaluate(&err, "(!=,10,9)", dict, TRUE));
-    check(test_evaluate(&err, "(!=,'hi',9)", dict, TRUE));
-    check(test_evaluate(&err, "(!=,-10,'hi')", dict, TRUE));
-    check(test_evaluate(&err, "(!=,-10,-10)", dict, FALSE));
-    check(test_evaluate(&err, "(!=,'hi','hi')", dict, FALSE));
-    check(test_evaluate(&err, "(!=,'a,b\\'c','a,b\\'c')", dict, FALSE));
-    check(test_evaluate(&err, "(!=,'ab\\'c','ab\\'d')", dict, TRUE));
-    check(test_evaluate(&err, "(!=,'hia','hi')", dict, TRUE));
-    check(test_evaluate(&err, "(!=,'hi','h ')", dict, TRUE));
-    check(test_evaluate(&err, "(!=,2018-10-12,'h ')", dict, TRUE));
-    check(test_evaluate(&err, "(!=,2018-10-12,2018-10-12)", dict, FALSE));
-    check(test_evaluate(&err, "(!=,2018-10-12,2018-10-13)", dict, TRUE));
-    check(test_evaluate(&err, "(!=,2018-10-13,2018-10-12)", dict, TRUE));
-    check(test_evaluate(&err, "(!=,2018-10-13,2017-10-13)", dict, TRUE));
-    check(test_evaluate(&err, "(!=,2018-10-13,2018-11-13)", dict, TRUE));
-    check(test_evaluate(&err, "(!=,[a],[a])", dict, FALSE));
-    check(test_evaluate(&err, "(!=,[a],[b])", dict, FALSE));
-    check(test_evaluate(&err, "(!=,[a],[c])", dict, TRUE));
-    check(test_evaluate(&err, "(!=,[c],[b])", dict, TRUE));
-    check(test_evaluate(&err, "(!=,TRUE,TRUE)", dict, FALSE));
-    check(test_evaluate(&err, "(!=,TRUE,FALSE)", dict, TRUE));
-    check(test_evaluate(&err, "(!=,FALSE,TRUE)", dict, TRUE));
-    check(test_evaluate(&err, "(!=,FALSE,FALSE)", dict, FALSE));
-    /* LESS THAN */
-    check(test_evaluate(&err, "(<,2,3)", dict, TRUE));
-    check(test_evaluate(&err, "(<,3,3)", dict, FALSE));
-    check(test_evaluate(&err, "(<,-3,3)", dict, TRUE));
-    /* GREATER THAN */
-    check(test_evaluate(&err, "(>,3,2)", dict, TRUE));
-    check(test_evaluate(&err, "(>,3,3)", dict, FALSE));
-    check(test_evaluate(&err, "(>,3,-3)", dict, TRUE));
-    /* LESS THAN OR EQUAL */
-    check(test_evaluate(&err, "(<=,2,3)", dict, TRUE));
-    check(test_evaluate(&err, "(<=,3,3)", dict, TRUE));
-    check(test_evaluate(&err, "(<=,-3,3)", dict, TRUE));
-    check(test_evaluate(&err, "(<=,3,-3)", dict, FALSE));
-    /* GREATER THAN OR EQUAL */
-    check(test_evaluate(&err, "(>=,3,2)", dict, TRUE));
-    check(test_evaluate(&err, "(>=,3,3)", dict, TRUE));
-    check(test_evaluate(&err, "(>=,3,-3)", dict, TRUE));
-    check(test_evaluate(&err, "(>=,-3,3)", dict, FALSE));
+	check(test_evaluate(&err, "(!=,10,10)", dict, FALSE));
+	check(test_evaluate(&err, "(!=,9,10)", dict, TRUE));
+	check(test_evaluate(&err, "(!=,10,9)", dict, TRUE));
+	check(test_evaluate(&err, "(!=,'hi',9)", dict, TRUE));
+	check(test_evaluate(&err, "(!=,-10,'hi')", dict, TRUE));
+	check(test_evaluate(&err, "(!=,-10,-10)", dict, FALSE));
+	check(test_evaluate(&err, "(!=,'hi','hi')", dict, FALSE));
+	check(test_evaluate(&err, "(!=,'a,b\\'c','a,b\\'c')", dict, FALSE));
+	check(test_evaluate(&err, "(!=,'ab\\'c','ab\\'d')", dict, TRUE));
+	check(test_evaluate(&err, "(!=,'hia','hi')", dict, TRUE));
+	check(test_evaluate(&err, "(!=,'hi','h ')", dict, TRUE));
+	check(test_evaluate(&err, "(!=,2018-10-12,'h ')", dict, TRUE));
+	check(test_evaluate(&err, "(!=,2018-10-12,2018-10-12)", dict, FALSE));
+	check(test_evaluate(&err, "(!=,2018-10-12,2018-10-13)", dict, TRUE));
+	check(test_evaluate(&err, "(!=,2018-10-13,2018-10-12)", dict, TRUE));
+	check(test_evaluate(&err, "(!=,2018-10-13,2017-10-13)", dict, TRUE));
+	check(test_evaluate(&err, "(!=,2018-10-13,2018-11-13)", dict, TRUE));
+	check(test_evaluate(&err, "(!=,[a],[a])", dict, FALSE));
+	check(test_evaluate(&err, "(!=,[a],[b])", dict, FALSE));
+	check(test_evaluate(&err, "(!=,[a],[c])", dict, TRUE));
+	check(test_evaluate(&err, "(!=,[c],[b])", dict, TRUE));
+	check(test_evaluate(&err, "(!=,TRUE,TRUE)", dict, FALSE));
+	check(test_evaluate(&err, "(!=,TRUE,FALSE)", dict, TRUE));
+	check(test_evaluate(&err, "(!=,FALSE,TRUE)", dict, TRUE));
+	check(test_evaluate(&err, "(!=,FALSE,FALSE)", dict, FALSE));
+	/* LESS THAN */
+	check(test_evaluate(&err, "(<,2,3)", dict, TRUE));
+	check(test_evaluate(&err, "(<,3,3)", dict, FALSE));
+	check(test_evaluate(&err, "(<,-3,3)", dict, TRUE));
+	/* GREATER THAN */
+	check(test_evaluate(&err, "(>,3,2)", dict, TRUE));
+	check(test_evaluate(&err, "(>,3,3)", dict, FALSE));
+	check(test_evaluate(&err, "(>,3,-3)", dict, TRUE));
+	/* LESS THAN OR EQUAL */
+	check(test_evaluate(&err, "(<=,2,3)", dict, TRUE));
+	check(test_evaluate(&err, "(<=,3,3)", dict, TRUE));
+	check(test_evaluate(&err, "(<=,-3,3)", dict, TRUE));
+	check(test_evaluate(&err, "(<=,3,-3)", dict, FALSE));
+	/* GREATER THAN OR EQUAL */
+	check(test_evaluate(&err, "(>=,3,2)", dict, TRUE));
+	check(test_evaluate(&err, "(>=,3,3)", dict, TRUE));
+	check(test_evaluate(&err, "(>=,3,-3)", dict, TRUE));
+	check(test_evaluate(&err, "(>=,-3,3)", dict, FALSE));
+	
+	/* Whitespace insensitivity. */
+	check(test_evaluate(&err, "(>=, 3, 2)", dict, TRUE));
+	check(test_evaluate(&err, "(= ,2 ,2 )", dict, TRUE));
+	check(test_evaluate(&err, "( =,2,2)", dict, TRUE));
+	check(test_evaluate(&err, "(=,' hi ',' hi')", dict, FALSE));
+	check(test_evaluate(&err, "  (=,2,2)", dict, TRUE));
+	check(test_evaluate(&err, "(=,2,2)  ", dict, TRUE));
+	check(test_evaluate(&err, "    (   =   ,	2  ,  2)  ", dict, TRUE));
 	
 	end_test();
 }
@@ -188,14 +198,14 @@ int suite_gettype()
 	check(test_gettype(" TR UE ", PBG_UNKNOWN));
 	check(test_gettype("true", PBG_UNKNOWN));
 	check(test_gettype("tRue", PBG_UNKNOWN));
-    /* pbg_isfalse */
+	/* pbg_isfalse */
 	check(test_gettype("FALSE", PBG_LT_FALSE));
 	check(test_gettype(" FALSE", PBG_UNKNOWN));
 	check(test_gettype(" FALSE ", PBG_UNKNOWN));
 	check(test_gettype(" FAL SE ", PBG_UNKNOWN));
 	check(test_gettype("false", PBG_UNKNOWN));
 	check(test_gettype("fAlse", PBG_UNKNOWN));
-    /* pbg_isnumber */
+	/* pbg_isnumber */
 	check(test_gettype("3.14e1", PBG_LT_NUMBER));
 	check(test_gettype("3", PBG_LT_NUMBER));
 	check(test_gettype("03", PBG_UNKNOWN));
@@ -224,9 +234,9 @@ int suite_gettype()
 
 
 /**************************
- *                        *
+ *						*
  * UNIT TESTING FUNCTIONS *
- *                        *
+ *						*
  **************************/
 
 int test_gettype(char* str, pbg_node_type expect)
