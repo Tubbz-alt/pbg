@@ -173,7 +173,7 @@ int suite_evaluate()
 	check(test_evaluate(&err, "( = 2 2)", dict, TRUE));
 	check(test_evaluate(&err, "(= ' hi ' ' hi')", dict, FALSE));
 	check(test_evaluate(&err, "(= 2 2)  ", dict, TRUE));
-	check(test_evaluate(&err, "(= \n2 \n2\n)  ", dict, TRUE));
+	check(test_evaluate(&err, "(=\n\t2\n\t2\n)  ", dict, TRUE));
 	check(test_evaluate(&err, "    (   =    	2     2)  ", dict, TRUE));
 	
 	/* Stress test the syntax. */

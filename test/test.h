@@ -33,16 +33,6 @@ void pbg_err_print(pbg_error* err);
 int test_gettype(char* str, pbg_node_type expect);
 
 /**
- * Tests pbg_parse.
- * @param err     Container to store parse errors to, if any.
- * @param str     String expression to parse.
- * @param expect  Expected success of parse.
- * @return PBG_TEST_PASS if expect == pbg_parse,
- *         PBG_TEST_FAIL if not.
- */
-int test_parse(pbg_error* err, char* str, int expect);
-
-/**
  * Tests pbg_evaluate.
  * @param err     Container to store parse & evaluation errors to, if any.
  * @param str     String expression to parse.
