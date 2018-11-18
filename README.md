@@ -117,6 +117,5 @@ This project is still a work-in-progress. Updates will be forthcoming.
 -  [X] Add error handling!
    + 2018-11-15: Basic error handling is in place. However, the grammar parsing is not yet robust; strings not in PBG are still accepted. (And memory errors are still a problem for some inputs.)
    + 2018-11-17: Errors are fully integrated and the grammar seems robust to a variety of errors. Writing tests is now easier.
--  [ ] Fix `pbg_gets`: short-circuit evaluation once buffer is full, restore `gets`-like behavior and size buffer precisely.
 -  [X] Add whitespace insensitivity within relevant fields.
    + 2018-11-17: Done!
