@@ -6,12 +6,13 @@
 
 
 /* Test suites in this file. */
-int suite_evaluate();
-int suite_gettype();
+pbg_expr_node dict(char* key, int n);
+int suite_evaluate(void);
+int suite_gettype(void);
 
 
 /* Run and summarize test suites. */
-int main()
+int main(void)
 {
 	summ_test("pbg_gettype", suite_gettype());
 	summ_test("pbg_evaluate", suite_evaluate());
@@ -29,6 +30,7 @@ int main()
  * It defines keys [a]=5.0, [b]=5.0, and [c]=6.0. */
 pbg_expr_node dict(char* key, int n)
 {
+	PBG_UNUSED(n);
 	pbg_expr_node keylt;
 	keylt._type = PBG_UNKNOWN;
 	keylt._int = 0;
@@ -265,13 +267,6 @@ int test_gettype(char* str, pbg_node_type expect)
 }
 
 
-int test_parse(pbg_error* err, char* str, int expect)
-{
-	// TODO implement me!
-	return PBG_TEST_PASS;
-}
-
-
 int test_evaluate(pbg_error* err, char* str, pbg_expr_node (*dict)(char*,int), int expect)
 {
 	pbg_expr e;
@@ -289,4 +284,13 @@ int test_evaluate(pbg_error* err, char* str, pbg_expr_node (*dict)(char*,int), i
 		return (expect == ERROR) ? PBG_TEST_PASS : PBG_TEST_FAIL;
 	/* Did we pass?? */
 	return (expect == output) ? PBG_TEST_PASS : PBG_TEST_FAIL;
+}
+
+
+void pbg_err_print(pbg_error* err)
+{
+	if(err->_type != PBG_ERR_NONE) {
+		printf("---");
+		pbg_error_print(err);
+	}
 }
