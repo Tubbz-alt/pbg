@@ -20,9 +20,9 @@ int main()
 
 
 /***************
- *			 *
+ *             *
  * TEST SUITES *
- *			 *
+ *             *
  ***************/
 
 /* This is a dictionary used for testing purposes. 
@@ -251,9 +251,9 @@ int suite_gettype()
 
 
 /**************************
- *						*
+ *                        *
  * UNIT TESTING FUNCTIONS *
- *						*
+ *                        *
  **************************/
 
 int test_gettype(char* str, pbg_node_type expect)

@@ -48,8 +48,8 @@ void pbg_print_h(pbg_expr* e, pbg_expr_node* node, int depth);
 // No local functions.
 
 /* HELPER FUNCTIONS */
-int is_a_digit(char c);
-int is_whitespace(char c);
+int pbg_isdigit(char c);
+int pbg_iswhitespace(char c);
 
 
 /*******************
@@ -520,11 +520,11 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 	}
 	
 	/* Remove leading whitespace. */
-	while(is_whitespace(*str)) str++;
+	while(pbg_iswhitespace(*str)) str++;
 	/* Compute position of first field. */
 	if(str[0] == '(') {
 		int j = 1;
-		while(is_whitespace(str[j])) j++;
+		while(pbg_iswhitespace(str[j])) j++;
 		fields[0] = j;
 	}else
 		fields[0] = 0;
@@ -538,18 +538,18 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 		if(!instring) {
 			if(str[i] == ')') {
 				int j = i-1;
-				while(is_whitespace(str[j])) j--;
+				while(pbg_iswhitespace(str[j])) j--;
 				closings[c++] = j+1;
 			}
 			if(open && (str[i] == ')' || (str[i] == ',' && str[i-1] != ')'))) {
 				int j = i-1;
-				while(is_whitespace(str[j])) j--;
+				while(pbg_iswhitespace(str[j])) j--;
 				lengths[f] = j+1 - fields[f++];
 				open = 0;
 			}
 			if(!open && (str[i] == '(' || (str[i] == ',' && str[i+1] != '('))) {
 				int j = i+1;
-				while(is_whitespace(str[j])) j++;
+				while(pbg_iswhitespace(str[j])) j++;
 				fields[f] = j;
 				open = 1;
 			}
@@ -823,105 +823,6 @@ void pbg_free(pbg_expr* e)
 }
 
 
-/**********************************
- *                                *
- * PRINTING & VISUALIZING TOOLKIT *
- *                                *
- **********************************/
-
-/**
- * TODO
- */
-int pbg_gets_r(pbg_expr* e, pbg_expr_node* node, char* buf, int i)
-{
-	/* This node is a literal. */
-	if(node->_type < PBG_MAX_LT)
-	{
-		char* data;
-		pbg_date_lt* dt;
-		switch(node->_type) {
-			case PBG_LT_TRUE:
-				buf[i++] = 'T';
-				buf[i++] = 'R';
-				buf[i++] = 'U';
-				buf[i++] = 'E';
-				break;
-			case PBG_LT_FALSE:
-				buf[i++] = 'F';
-				buf[i++] = 'A';
-				buf[i++] = 'L';
-				buf[i++] = 'S';
-				buf[i++] = 'E';
-				break;
-			case PBG_LT_STRING:
-				data = (char*) node->_data;
-				buf[i++] = '\'';
-				for(int j = 0; j < node->_int; j++)
-					buf[i++] = data[j];
-				buf[i++] = '\'';
-				break;
-			case PBG_LT_DATE:
-				dt = (pbg_date_lt*) node->_data;
-				i += snprintf(buf+i, 5, "%04d", dt->_YYYY);
-				buf[i++] = '-';
-				i += snprintf(buf+i, 3, "%02d", dt->_MM);
-				buf[i++] = '-';
-				i += snprintf(buf+i, 3, "%02d", dt->_DD);
-				break;
-			case PBG_LT_KEY:
-				data = (char*) node->_data;
-				buf[i++] = '[';
-				for(int j = 0; j < node->_int; j++)
-					buf[i++] = data[j];
-				buf[i++] = ']';
-				break;
-			case PBG_LT_NUMBER:
-				i += sprintf(buf+i, "%.2lf", *((double*)node->_data));
-				break;
-			default:
-				// TODO error: unknown literal!
-				break;
-		}
-	
-	/* This node is an operator. */
-	}else{
-		buf[i++] = '(';
-		switch(node->_type) {
-			case PBG_OP_NOT:  buf[i++] = '!'; break;
-			case PBG_OP_AND:  buf[i++] = '&'; break;
-			case PBG_OP_OR:   buf[i++] = '|'; break;
-			case PBG_OP_EQ:   buf[i++] = '='; break;
-			case PBG_OP_LT:   buf[i++] = '<'; break;
-			case PBG_OP_GT:   buf[i++] = '>'; break;
-			case PBG_OP_EXST: buf[i++] = '?'; break;
-			case PBG_OP_NEQ:  buf[i++] = '!', buf[i++] = '='; break;
-			case PBG_OP_LTE:  buf[i++] = '<', buf[i++] = '='; break;
-			case PBG_OP_GTE:  buf[i++] = '>', buf[i++] = '='; break;
-			default:
-				// TODO error: unknown operator!
-				break;
-		}
-		buf[i++] = ',';
-		int* children = (int*)node->_data;
-		for(int j = 0; j < node->_int; j++) {
-			pbg_expr_node* child = pbg_get_node(e, children[j]);
-			i = pbg_gets_r(e, child, buf, i);
-			if(j != node->_int-1)
-				buf[i++] = ',';
-		}
-		buf[i++] = ')';
-	}
-	return i;
-}
-
-char* pbg_gets(pbg_expr* e, char** bufptr, int n)
-{
-	char* buf = (char*) malloc(1000);  // TODO fix me then mix me
-	int len = pbg_gets_r(e, e->_static, buf, 0);
-	buf[len] = '\0';
-	return buf;
-}
-
 /*********************************
  *                               *
  * CONVERSION & CHECKING TOOLKIT *
@@ -1004,13 +905,13 @@ int pbg_isnumber(char* str, int n)
 	/* Check if negative or positive */
 	if(str[i] == '-' || str[i] == '+') i++;
 	/* Otherwise, ensure first character is a digit. */
-	else if(!is_a_digit(str[i]))
+	else if(!pbg_isdigit(str[i]))
 		return 0;
 	
 	/* Parse everything before the dot. */
-	if(str[i] != '0' && is_a_digit(str[i])) {
-		while(i != n && is_a_digit(str[i])) i++;
-		if(i != n && !is_a_digit(str[i]) && str[i] != '.') return 0;
+	if(str[i] != '0' && pbg_isdigit(str[i])) {
+		while(i != n && pbg_isdigit(str[i])) i++;
+		if(i != n && !pbg_isdigit(str[i]) && str[i] != '.') return 0;
 	}else if(str[i] == '0') {
 		if(++i != n && !(str[i] == '.' || str[i] == 'e' || str[i] == 'E')) return 0;
 	}
@@ -1020,8 +921,8 @@ int pbg_isnumber(char* str, int n)
 		/* Last character must be a digit. */
 		if(i++ == n-1) return 0;
 		/* Exhaust all digits. */
-		while(i != n && is_a_digit(str[i])) i++;
-		if(i != n && !is_a_digit(str[i]) && str[i] != 'e' && str[i] != 'E') return 0;
+		while(i != n && pbg_isdigit(str[i])) i++;
+		if(i != n && !pbg_isdigit(str[i]) && str[i] != 'e' && str[i] != 'E') return 0;
 	}
 	
 	/* Parse everything after the exponent. */
@@ -1031,8 +932,8 @@ int pbg_isnumber(char* str, int n)
 		/* Parse positive or negative sign. */
 		if(str[i] == '-' || str[i] == '+') i++;
 		/* Exhaust all digits. */
-		while(i != n && is_a_digit(str[i])) i++;
-		if(i != n && !is_a_digit(str[i])) return 0;
+		while(i != n && pbg_isdigit(str[i])) i++;
+		if(i != n && !pbg_isdigit(str[i])) return 0;
 	}
 	
 	/* Probably a number! */
@@ -1091,12 +992,16 @@ void pbg_todate(pbg_date_lt* ptr, char* str, int n)
  * Checks if the given character is a digit.
  * @param c  Character to check.
  */
-int is_a_digit(char c)
+int inline pbg_isdigit(char c)
 {
 	return c >= '0' && c <= '9';
 }
 
-int is_whitespace(char c)
+/**
+ * Checks if the given character is whitespace.
+ * @param c  Character to check.
+ */
+int inline pbg_iswhitespace(char c)
 {
 	return c == ' ' || c == '\t' || c == '\n';
 }

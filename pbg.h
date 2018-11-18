@@ -168,26 +168,6 @@ void pbg_free(pbg_expr* e);
 int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_expr_node (*dict)(char*, int));
 
 
-/***********************
- *                     *
- * EXPRESSION PRINTING *
- *                     *
- ***********************/
-
-/**
- * Prints the Prefix Boolean Expression to the char pointer provided. If ptr is
- * NULL and n is 0, then this function will allocate memory on the heap which
- * must then be free'd by the caller. In this way, this function behaves in a
- * manner reminiscent of fgets.
- * @param e      PBG expression to print.
- * @param bufptr Pointer to the output buffer.
- * @param n      Length of the buffer pointed to by bufptr.
- * @return Number of characters written to the buffer.
- * @param err Container to store error, if any occurs.
- */
-char* pbg_gets(pbg_expr* e, char** bufptr, int n);
-
-
 /******************************************
  *                                        *
  * CONVERSION AND TYPE CHECKING FUNCTIONS *
