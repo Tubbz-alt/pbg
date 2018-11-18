@@ -37,6 +37,7 @@ typedef enum {
 	PBG_MAX_LT_TP,
 	
 	/* Literals. */
+	PBG_MIN_LT,
 	PBG_LT_TRUE,    // TRUE literal
 	PBG_LT_FALSE,   // FALSE literal
 	PBG_LT_NUMBER,  // NUMBER literal
@@ -47,6 +48,7 @@ typedef enum {
 	PBG_MAX_LT,     // END OF LITERALS!
 	
 	/* Operators. */
+	PBG_MIN_OP,
 	PBG_OP_NOT,   // !
 	PBG_OP_AND,   // &
 	PBG_OP_OR,    // |
