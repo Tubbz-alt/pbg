@@ -1,15 +1,13 @@
+#include "../pbg.h"
+#include "test.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "pbg_test.h"
-#include "../pbg.h"
-
 
 /* Test suites in this file. */
 pbg_expr_node dict(char* key, int n);
 int suite_evaluate(void);
 int suite_gettype(void);
-
 
 /* Run and summarize test suites. */
 int main(void)
