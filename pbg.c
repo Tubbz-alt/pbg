@@ -512,53 +512,75 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 	e->_staticsz = 0;
 	e->_dynamicsz = 0;
 	
-	/* Count number of non-STRING commas, keys, and closing braces. */
-	int numcommas = 0;
+	/* Verify that all strings & keys are bounded, that all opening parentheses
+	 * have friends, and that only a single expression is present. Also count 
+	 * the number of fields, keys, and closings. */
+	int numfields = 0;
 	int numkeys = 0;
 	int numclosings = 0;
-	int instring = 0;
 	int depth = 0, reachedend = 0;
+	int instring = 0, inkey = 0;
 	for(int i = 0; i < n; i++) {
-		/* Check if we're in a string or not. */
-		if(!instring && str[i] == '\'')
-			instring = i;
-		else if(instring && str[i] == '\'' && str[i-1] != '\\')
-			instring = 0;
-		/* Nothing gets counted if we are in a string! */
-		if(!instring) {
-			if(str[i] == '(') depth++;
-			else if(str[i] == ',') numcommas++;
-			else if(str[i] == '[') numkeys++;
-			else if(str[i] == ')') {
-				numclosings++, depth--;
-				/* Negative depth only occurs if unmatched closing parentheses. */
-				if(depth < 0) {
-					pbg_err_syntax(err, __LINE__, __FILE__, str, i,
-							"Too many closing parentheses.");
-					return;
-				}
-				/* Depth zero only legally occurs at the end. */
-				if(depth == 0 && !reachedend)
-					reachedend = i;
-				else if(depth == 0 && reachedend) {
-					pbg_err_syntax(err, __LINE__, __FILE__, str, reachedend,
-							"More than one statement.");
-					return;
-				}
+		if(pbg_iswhitespace(str[i])) continue;
+		/* Count number of keys. */
+		if(str[i] == '[') numkeys++;
+		/* It's an open! Delve deeper into the tree. */
+		if(str[i] == '(') depth++;
+		/* It's a close! Rise up in the tree. */
+		else if(str[i] == ')') {
+			numclosings++, depth--;
+			/* Negative tree depth only occurs if unmatched closing 
+			 * parentheses. */
+			if(depth < 0) {
+				pbg_err_syntax(err, __LINE__, __FILE__, str, i,
+						"Too many closing parentheses.");
+				return;
 			}
+			/* Depth zero only legally occurs at the end. */
+			if(depth == 0 && !reachedend)
+				reachedend = i;
+			else if(depth == 0 && reachedend) {
+				pbg_err_syntax(err, __LINE__, __FILE__, str, reachedend,
+						"More than one complete expression.");
+				return;
+			}
+		/* It's a field! */
+		}else{
+			/* It's a string! */
+			if(str[i] == '\'') {
+				instring = 1;
+				do i++; while(i != n && !(str[i] == '\'' && str[i-1] != '\\'));
+				if(i != n) instring = 0;
+			}
+			/* It's a key! */
+			else if(str[i] == '[') {
+				inkey = 1;
+				do i++; while(!(str[i] == ']' && str[i-1] != '\\'));
+				if(i != n) inkey = 0;
+			}
+			/* It's literally anything else! */
+			else
+				while(!pbg_iswhitespace(str[i+1]) && 
+						str[i+1] != '(' && str[i+1] != ')') i++;
+			numfields++;
 		}
 	}
-	
+	/* Check if string is left unclosed. */
+	if(instring) {
+		pbg_err_syntax(err, __LINE__, __FILE__, str, instring, 
+				"Unclosed string.");
+		return;
+	}
+	/* Check if key is left unclosed. */
+	if(inkey) {
+		pbg_err_syntax(err, __LINE__, __FILE__, str, inkey, 
+				"Unclosed key.");
+		return;
+	}
 	/* Check if there are any parentheses at all . */
 	if(numclosings == 0) {
 		pbg_err_syntax(err, __LINE__, __FILE__, str, 0,
 				"Every PBG expression must be bound with parentheses.");
-		return;
-	}
-	/* Check if string is left unbounded. */
-	if(instring) {
-		pbg_err_syntax(err, __LINE__, __FILE__, str, instring, 
-				"Unclosed string.");
 		return;
 	}
 	/* Check if opening parentheses are left unclosed. */
@@ -569,8 +591,6 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 	}
 	
 	/* Compute sizes of static and dynamic arrays. */
-	/* The relevant fields in e are used as indexing each array during parsing. */
-	int numfields = numcommas+1;
 	int numstatic = numfields - numkeys;
 	int numdynamic = numkeys;
 	
@@ -591,35 +611,33 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 		return;
 	}
 	
-	/* Compute position and lengths of each field & position of closings. */
-	for(int i=0, c=0, f=0, open=0, instring=0, lastnonwhite=0; i < n; i++) {
-		/* Check if we're in a string or not. */
-		if((!instring && str[i] == '\'') || 
-				(instring && str[i] == '\'' && str[i-1] != '\\'))
-			instring = 1 - instring;
-		/* Nothing gets opened, closed, or measured if we're in a string! */
-		if(!instring) {
-			if(str[i] == ')')
-				closings[c++] = i;
-			if(open && (str[i] == ')' || (str[i] == ',' && str[i-1] != ')'))) {
-				lengths[f] = lastnonwhite - fields[f];
-				/* Fields cannot have zero length. */
-				if(lengths[f] == 0) {
-					free(fields), free(lengths), free(closings);
-					pbg_err_syntax(err, __LINE__, __FILE__, str, fields[f]-1,
-							"Zero-length field!.");
-					return;
-				}
-				open = 0, f++;
-			}
-			if(!open && (str[i] == '(' || (str[i] == ',' && str[i+1] != '('))) {
-				do i++; while(pbg_iswhitespace(str[i]));
-				fields[f] = i--;
-				open = 1;
-			}
+	/* Identify the indices of all fields and closings as well as lengths of 
+	 * the fields. */
+	for(int i = 0, c = 0, f = 0; i < n; i++) {
+		/* Whitespaces are the enemy. */
+		if(pbg_iswhitespace(str[i])) continue;
+		/* It's a close! */
+		if(str[i] == ')') {
+			closings[c++] = i;
+		/* It's a field! */
+		}else if(str[i] != '(') {
+			/* Grab index of field. */
+			fields[f] = i;
+			/* It's a string! */
+			if(str[i] == '\'') {
+				do i++; while(!(str[i] == '\'' && str[i-1] != '\\'));
+			/* It's a key! */
+			}else if(str[i] == '[')
+				do i++; while(!(str[i] == ']' && str[i-1] != '\\'));
+			/* It's literally anything else! */
+			else
+				while(!pbg_iswhitespace(str[i+1]) &&
+						str[i+1] != '(' && str[i+1] != ')') i++;
+			/* Compute length of field. */
+			lengths[f] = i - fields[f] + 1, f++;
 		}
-		if(!pbg_iswhitespace(str[i])) lastnonwhite = i+1;
 	}
+	
 	/* Needed to determine when we've reached the end of the expression string
 	 * in pbg_parse_r. */
 	fields[numfields] = -1;
@@ -648,6 +666,17 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 	
 	/* Clean up! */
 	free(fields), free(lengths), free(closings);
+	
+	/* Do not perform sanity checks if there's already an error. */
+	if(err->_type != PBG_ERR_NONE)
+		return;
+	
+	/* Sanity check: verify we parsed everything we expected. */
+	if(e->_staticsz != numstatic || e->_dynamicsz != numdynamic) {
+		pbg_err_state(err, __LINE__, __FILE__,
+				"Not all fields were parsed?");
+		return;
+	}
 }
 
 
@@ -1034,6 +1063,7 @@ int pbg_iskey(char* str, int n)
 
 int pbg_isstring(char* str, int n)
 {
+	// TODO ensure I don't contain any unescaped single quotes!
 	return str[0] == '\'' && str[n-1] == '\'';
 }
 
