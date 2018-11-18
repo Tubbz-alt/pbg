@@ -62,17 +62,17 @@ typedef enum {
 	PBG_OP_TYPE,  // @
 	// Add more operators here.
 	PBG_MAX_OP    // END OF OPS!
-} pbg_node_type;
+} pbg_field_type;
 
 /**
  * This struct represents a Prefix Boolean Expression. The value of the
  * operator constrains both the number of children and the type of children.
  */
 typedef struct {
-	pbg_node_type  _type;  /* Node type, determines the type/size of data. */
+	pbg_field_type  _type;  /* Node type, determines the type/size of data. */
 	int            _int;   /* Type determines what this is used for! */
 	void*          _data;  /* Arbitrary data! */
-} pbg_expr_node;
+} pbg_field;
 
 /**
  * This struct represents a Prefix Boolean Expression. The AST is represented
@@ -82,8 +82,8 @@ typedef struct {
  * The static array stores non-KEY nodes. The dynamic array stores KEY nodes.
  */
 typedef struct {
-	pbg_expr_node*  _static;     /* Static nodes (read: not KEYs). */
-	pbg_expr_node*  _dynamic;    /* Dynamic nodes (read: KEYs). */
+	pbg_field*  _static;     /* Static nodes (read: not KEYs). */
+	pbg_field*  _dynamic;    /* Dynamic nodes (read: KEYs). */
 	int             _staticsz;   /* Number of static nodes. */
 	int             _dynamicsz;  /* Number of dynamic nodes. */
 } pbg_expr;
@@ -151,17 +151,80 @@ void pbg_free(pbg_expr* e);
  * @return 1 if the PBG expression evaluates to true with the given dictionary. 
  *         0 otherwise.
  */
-int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_expr_node (*dict)(char*, int));
+int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_field (*dict)(char*, int));
+
+
+/**************
+ *            *
+ *   FIELDS   *
+ *            *
+ **************/
+
+/**
+ * Makes a pbg_field representing the given type. Initializes everything
+ * other than the type to zero.
+ * @param type  Type of the node.
+ * @return a new node with the given type.
+ */
+pbg_field pbg_make_field(pbg_field_type type);
+
+/**
+ * Makes a pbg_field representing a KEY. Attempts to parse the given string as
+ * a KEY. If an error occurs during conversion, then err will be initialized 
+ * with the relevant error, if it is not NULL.
+ * @param err  Used to store error, if any.
+ * @param str  String to parse as a KEY.
+ * @param n    Length of str.
+ * @return a new node with the PBG_LT_KEY type if successful,
+ *         a node with the PBG_UNKNOWN type otherwise.
+ */
+pbg_field pbg_make_key(pbg_error* err, char* str, int n);
+
+/**
+ * Makes a pbg_field representing a DATE. Attempts to parse the given string as
+ * a DATE. If an error occurs during conversion, then err will be initialized 
+ * with the relevant error, if it is not NULL.
+ * @param err  Used to store error, if any.
+ * @param str  String to parse as a DATE.
+ * @param n    Length of str.
+ * @return a new node with the PBG_LT_DATE type if successful,
+ *         a node with the PBG_UNKNOWN type otherwise.
+ */
+pbg_field pbg_make_date(pbg_error* err, char* str, int n);
+
+/**
+ * Makes a pbg_field representing a NUMBER. Attempts to parse the given string
+ * as a NUMBER. If an error occurs during conversion, then err will be 
+ * initialized with the relevant error, if it is not NULL.
+ * @param err  Used to store error, if any.
+ * @param str  String to parse as a NUMBER.
+ * @param n    Length of str.
+ * @return a new node with the PBG_LT_NUMBER type if successful,
+ *         a node with the PBG_UNKNOWN type otherwise.
+ */
+pbg_field pbg_make_number(pbg_error* err, char* str, int n);
+
+/**
+ * Makes a pbg_field representing a STRING. Attempts to parse the given string
+ * as a STRING. If an error occurs during conversion, then err will be 
+ * initialized with the relevant error, if it is not NULL.
+ * @param err  Used to store error, if any.
+ * @param str  String to parse as a STRING.
+ * @param n    Length of str.
+ * @return a new node with the PBG_LT_STRING type if successful,
+ *         a node with the PBG_UNKNOWN type otherwise.
+ */
+pbg_field pbg_make_string(pbg_error* err, char* str, int n);
 
 /** 
  * Identifies the PBG expression type of the given string. This function works
  * for both literal and operator types.
  * @param str String to parse.
  * @param n   Length of the string.
- * @return the pbg_node_type associated with the given string, PBG_UNKNOWN if
+ * @return the pbg_field_type associated with the given string, PBG_UNKNOWN if
  *         none.
  */
-pbg_node_type pbg_gettype(char* str, int n);
+pbg_field_type pbg_gettype(char* str, int n);
 
 
 /***************
@@ -169,6 +232,14 @@ pbg_node_type pbg_gettype(char* str, int n);
  *   ERRORS    *
  *             *
  ***************/
+ 
+/**
+ * Checks if the given error has been initialized with error data.
+ * @param err  Error to check.
+ * @return 1 if the given error has been initialized,
+ *         0 otherwise.
+ */
+int pbg_iserror(pbg_error* err);
 
 /**
  * Prints a human-readable representation of the given pbg_error to the

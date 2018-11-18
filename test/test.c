@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 /* Test suites in this file. */
-pbg_expr_node dict(char* key, int n);
+pbg_field dict(char* key, int n);
 int suite_evaluate(void);
 int suite_gettype(void);
 
@@ -26,10 +26,10 @@ int main(void)
 
 /* This is a dictionary used for testing purposes. 
  * It defines keys [a]=5.0, [b]=5.0, and [c]=6.0. */
-pbg_expr_node dict(char* key, int n)
+pbg_field dict(char* key, int n)
 {
 	PBG_UNUSED(n);
-	pbg_expr_node keylt;
+	pbg_field keylt;
 	keylt._type = PBG_UNKNOWN;
 	keylt._int = 0;
 	keylt._data = NULL;
@@ -340,16 +340,16 @@ int suite_gettype()
  *                        *
  **************************/
 
-int test_gettype(char* str, pbg_node_type expect)
+int test_gettype(char* str, pbg_field_type expect)
 {
 	/* Translate given string to type. */
-	pbg_node_type output = pbg_gettype(str, strlen(str));
+	pbg_field_type output = pbg_gettype(str, strlen(str));
 	/* Did we pass?? */
 	return (output == expect) ? PBG_TEST_PASS : PBG_TEST_FAIL;
 }
 
 
-int test_evaluate(pbg_error* err, char* str, pbg_expr_node (*dict)(char*,int), int expect)
+int test_evaluate(pbg_error* err, char* str, pbg_field (*dict)(char*,int), int expect)
 {
 	pbg_expr e;
 	/* Parse the string expression. */

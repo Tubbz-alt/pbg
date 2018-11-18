@@ -25,7 +25,7 @@ typedef char pbg_string_lt; /* PBG_LT_STRING */
 /* ERROR REPRESENTATIONS */
 typedef struct {
 	int            _arity;  /* Number of arguments given to operator. */
-	pbg_node_type  _type;   /* Type of operator involved in error. */
+	pbg_field_type  _type;   /* Type of operator involved in error. */
 } pbg_op_arity_err;  /* PBG_ERR_OP_ARITY. */
 
 typedef struct {
@@ -41,48 +41,46 @@ typedef struct {
  *                          *
  ****************************/
  
-/* NODE MANAGEMENT */
-pbg_expr_node* pbg_get_node(pbg_expr* e, int index);
-void pbg_free_node(pbg_expr_node* node);
+/* FIELD MANAGEMENT */
+pbg_field* pbg_field_get(pbg_expr* e, int index);
+void pbg_field_free(pbg_field* field);
 
 /* ERROR MANAGEMENT */
 void pbg_err_alloc(pbg_error* err, int line, char* file);
 void pbg_err_unknown_type(pbg_error* err, int line, char* file);
 void pbg_err_syntax(pbg_error* err, int line, char* file, char* str, int i, char* msg);
-void pbg_err_op_arity(pbg_error* err, int line, char* file, pbg_node_type type, int arity);
+void pbg_err_op_arity(pbg_error* err, int line, char* file, pbg_field_type type, int arity);
 void pbg_err_state(pbg_error* err, int line, char* file, char* msg);
 void pbg_err_op_arg_type(pbg_error* err, int line, char* file);
 
-char* pbg_type_str(pbg_node_type type);
+char* pbg_type_str(pbg_field_type type);
 char* pbg_error_str(pbg_error_type type);
 
-/* NODE CREATION TOOLKIT */
-int pbg_create_op(pbg_expr* e, pbg_error* err, pbg_node_type type, int numchildren);
-int pbg_create_lt(pbg_expr* e, pbg_node_type type);
-int pbg_create_lt_key(pbg_expr* e, pbg_error* err, char* str, int n);
-int pbg_create_lt_date(pbg_expr* e, pbg_error* err, char* str, int n);
-int pbg_create_lt_number(pbg_expr* e, pbg_error* err, char* str, int n);
-int pbg_create_lt_string(pbg_expr* e, pbg_error* err, char* str, int n);
+/* FIELD CREATION TOOLKIT */
+pbg_field pbg_make_op(pbg_error* err, pbg_field_type type, int numchildren);
+int pbg_store_static(pbg_expr* e, pbg_field field);
+int pbg_store_dynamic(pbg_expr* e, pbg_field field);
 
-/* NODE PARSING TOOLKIT */
-int pbg_check_op_arity(pbg_node_type type, int numargs);
+/* FIELD PARSING TOOLKIT */
+int pbg_check_op_arity(pbg_field_type type, int numargs);
 int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str, int** fields, int** lengths, int** closings);
 
-/* NODE EVALUATION TOOLKIT */
-int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_expr_node* node);
-int pbg_evaluate_op_not(pbg_expr* e, pbg_error* err, pbg_expr_node* node);
-int pbg_evaluate_op_and(pbg_expr* e, pbg_error* err, pbg_expr_node* node);
-int pbg_evaluate_op_or(pbg_expr* e, pbg_error* err, pbg_expr_node* node);
-int pbg_evaluate_op_exst(pbg_expr* e, pbg_error* err, pbg_expr_node* node);
-int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_expr_node* node);
-int pbg_evaluate_op_neq(pbg_expr* e, pbg_error* err, pbg_expr_node* node);
-int pbg_evaluate_op_lt(pbg_expr* e, pbg_error* err, pbg_expr_node* node);
-int pbg_evaluate_op_gt(pbg_expr* e, pbg_error* err, pbg_expr_node* node);
-int pbg_evaluate_op_lte(pbg_expr* e, pbg_error* err, pbg_expr_node* node);
-int pbg_evaluate_op_gte(pbg_expr* e, pbg_error* err, pbg_expr_node* node);
-int pbg_evaluate_op_typeof(pbg_expr* e, pbg_error* err, pbg_expr_node* node);
+/* FIELD EVALUATION TOOLKIT */
+int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_field* field);
+int pbg_evaluate_op_not(pbg_expr* e, pbg_error* err, pbg_field* field);
+int pbg_evaluate_op_and(pbg_expr* e, pbg_error* err, pbg_field* field);
+int pbg_evaluate_op_or(pbg_expr* e, pbg_error* err, pbg_field* field);
+int pbg_evaluate_op_exst(pbg_expr* e, pbg_error* err, pbg_field* field);
+int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_field* field);
+int pbg_evaluate_op_neq(pbg_expr* e, pbg_error* err, pbg_field* field);
+int pbg_evaluate_op_lt(pbg_expr* e, pbg_error* err, pbg_field* field);
+int pbg_evaluate_op_gt(pbg_expr* e, pbg_error* err, pbg_field* field);
+int pbg_evaluate_op_lte(pbg_expr* e, pbg_error* err, pbg_field* field);
+int pbg_evaluate_op_gte(pbg_expr* e, pbg_error* err, pbg_field* field);
+int pbg_evaluate_op_typeof(pbg_expr* e, pbg_error* err, pbg_field* field);
 
 /* JANITORIAL FUNCTIONS */
+void pbg_error_init(pbg_error* err);
 // No local functions.
 
 /* CONVERSION & CHECKING TOOLKIT */
@@ -109,22 +107,22 @@ int pbg_isdigit(char c);
 int pbg_iswhitespace(char c);
 
 
-/*******************
- *                 *
- * NODE MANAGEMENT *
- *                 *
- *******************/
+/********************
+ *                  *
+ * FIELD MANAGEMENT *
+ *                  *
+ ********************/
 
 /**
- * This function returns the node identified by the given index. Static nodes
- * are identified by positive indices starting at 1. Dynamic nodes are
+ * This function returns the field identified by the given index. Static fields
+ * are identified by positive indices starting at 1. Dynamic fields are
  * identified by negative indices starting at -1.
- * @param e      PBG expression to get node from.
- * @param index  Index of the node to get.
- * @return Pointer to the pbg_expr_node in e specified by the index,
+ * @param e      PBG expression to get field from.
+ * @param index  Index of the field to get.
+ * @return Pointer to the pbg_field in e specified by the index,
  *         NULL if index is 0.
  */
-pbg_expr_node* pbg_get_node(pbg_expr* e, int index)
+pbg_field* pbg_field_get(pbg_expr* e, int index)
 {
 	if(index < 0) return e->_dynamic - (index+1);
 	if(index > 0) return e->_static + (index-1);
@@ -132,12 +130,12 @@ pbg_expr_node* pbg_get_node(pbg_expr* e, int index)
 }
 
 /**
- * Free's the single pbg_expr_node pointed to by the specified pointer.
- * @param node  pbg_expr_node to free.
+ * Free's the single pbg_field pointed to by the specified pointer.
+ * @param field  pbg_field to free.
  */
-void pbg_free_node(pbg_expr_node* node)
+void pbg_field_free(pbg_field* field)
 {
-	if(node->_data != NULL) free(node->_data);
+	if(field->_data != NULL) free(field->_data);
 }
 
 
@@ -208,7 +206,7 @@ void pbg_err_syntax(pbg_error* err, int line, char* file,
 }
 
 void pbg_err_op_arity(pbg_error* err, int line, char* file, 
-		pbg_node_type type, int arity)
+		pbg_field_type type, int arity)
 {
 	err->_type = PBG_ERR_OP_ARITY;
 	err->_line = line;
@@ -247,121 +245,130 @@ void pbg_error_free(pbg_error* err)
 }
 
 
+/**************************
+ *                        *
+ * FIELD CREATION TOOLKIT *
+ *                        *
+ **************************/
+
+/**
+ * Makes a pbg_field representing the given operator type with the specified
+ * number of child fields.
+ * @param err   Used to store error, if any.
+ * @param type  Type of the operator.
+ * @param argc  Number of arguments.
+ * @return the new pbg_field.
+ */
+pbg_field pbg_make_op(pbg_error* err, pbg_field_type type, int argc)
+{
+	pbg_field field;
+	field._type = type;
+	field._int = 0;
+	field._data = malloc(argc * sizeof(int));
+	if(field._data == NULL && err != NULL)
+		pbg_err_alloc(err, __LINE__, __FILE__);
+	return field;
+}
+
+pbg_field pbg_make_field(pbg_field_type type)
+{
+	pbg_field field;
+	field._type = type;
+	field._int = 0;
+	field._data = NULL;
+	return field;
+}
+
+pbg_field pbg_make_key(pbg_error* err, char* str, int n)
+{
+	pbg_field field = pbg_make_field(PBG_UNKNOWN);
+	field._type = PBG_LT_KEY;
+	field._int = (n-2) * sizeof(char);
+	field._data = malloc(field._int);
+	if(field._data == NULL) {
+		if(err != NULL) pbg_err_alloc(err, __LINE__, __FILE__);
+	}else
+		memcpy(field._data, str+1, n-2);
+	return field;
+}
+
+pbg_field pbg_make_date(pbg_error* err, char* str, int n)
+{
+	pbg_field field = pbg_make_field(PBG_UNKNOWN);
+	field._type = PBG_LT_DATE;
+	field._int = sizeof(pbg_date_lt);
+	field._data = malloc(field._int);
+	if(field._data == NULL) {
+		if(err != NULL) pbg_err_alloc(err, __LINE__, __FILE__);
+	}else
+		pbg_todate((pbg_date_lt*)field._data, str, n);
+	return field;
+}
+
+pbg_field pbg_make_number(pbg_error* err, char* str, int n)
+{
+	pbg_field field = pbg_make_field(PBG_UNKNOWN);
+	field._type = PBG_LT_NUMBER;
+	field._int = sizeof(pbg_number_lt);
+	field._data = malloc(field._int);
+	if(field._data == NULL) {
+		if(err != NULL) pbg_err_alloc(err, __LINE__, __FILE__);
+	}else
+		pbg_tonumber((pbg_number_lt*)field._data, str, n);
+	return field;
+}
+
+pbg_field pbg_make_string(pbg_error* err, char* str, int n)
+{
+	pbg_field field = pbg_make_field(PBG_UNKNOWN);
+	field._type = PBG_LT_STRING;
+	field._int = (n-2) * sizeof(pbg_string_lt);
+	field._data = malloc(field._int);
+	if(field._data == NULL) {
+		if(err != NULL) pbg_err_alloc(err, __LINE__, __FILE__);
+	}else
+		memcpy(field._data, str+1, n-2);
+	return field;
+}
+
+/**
+ * This function stores the given static field in the AST. Static fields are
+ * indexed using positive values starting at 1.
+ * @param e     Abstract expression tree to store field in.
+ * @param field  Field to store.
+ * @return a positive index if successful,
+ *         0 otherwise.
+ */
+int pbg_store_static(pbg_expr* e, pbg_field field)
+{
+	if(field._type == PBG_UNKNOWN)
+		return 0;
+	int fieldi = 1 + e->_staticsz++;
+	*pbg_field_get(e, fieldi) = field;
+	return fieldi;
+}
+
+/**
+ * This function stores the given dynamic field in the AST. Dynamic fields are
+ * indexed using negative values starting at -1.
+ * @param e     Abstract expression tree to store field in.
+ * @param field  Field to store.
+ * @return a negative index if successful,
+ *         0 otherwise.
+ */
+int pbg_store_dynamic(pbg_expr* e, pbg_field field)
+{
+	int fieldi = -(1 + e->_dynamicsz++);
+	*pbg_field_get(e, fieldi) = field;
+	return fieldi;
+}
+
+
 /*************************
  *                       *
- * NODE CREATION TOOLKIT *
+ * FIELD PARSING TOOLKIT *
  *                       *
  *************************/
-
-int pbg_create_op(pbg_expr* e, pbg_error* err, pbg_node_type type, int numchildren)
-{
-	/* Static nodes have positive indices. */
-	int nodei = 1 + e->_staticsz++;
-	pbg_expr_node* node = pbg_get_node(e, nodei);
-	node->_type = type;
-	node->_int = 0;
-	node->_data = malloc(numchildren * sizeof(int));
-	if(node->_data == NULL) {
-		pbg_err_alloc(err, __LINE__, __FILE__);
-		return 0;
-	}
-	/* Done! */
-	return nodei;
-}
-
-int pbg_create_lt(pbg_expr* e, pbg_node_type type)
-{
-	/* Static nodes have positive indices. */
-	int nodei = 1 + e->_staticsz++;
-	/* Initialize node! */
-	pbg_expr_node* node = pbg_get_node(e, nodei);
-	node->_type = type;
-	node->_int = 0;
-	node->_data = NULL;
-	/* Done! */
-	return nodei;
-}
-
-int pbg_create_lt_key(pbg_expr* e, pbg_error* err, char* str, int n)
-{
-	/* Dynamic nodes have negative indices. 
-	 * Subtract 1 to offset first element to -1 from 0. */
-	int nodei = -(1 + e->_dynamicsz++);
-	/* Initialize node! */
-	pbg_expr_node* node = pbg_get_node(e, nodei);
-	node->_type = PBG_LT_KEY;
-	node->_int = (n-2) * sizeof(char);
-	node->_data = malloc(node->_int);
-	if(node->_data == NULL) {
-		pbg_err_alloc(err, __LINE__, __FILE__);
-		return 0;
-	}
-	memcpy(node->_data, str+1, n-2);
-	// TODO ensure each key node in e->_dynamic is unique?
-	/* Done! */
-	return nodei;
-}
-
-int pbg_create_lt_date(pbg_expr* e, pbg_error* err, char* str, int n)
-{
-	/* Static nodes have positive indices. */
-	int nodei = 1 + e->_staticsz++;
-	/* Initialize node! */
-	pbg_expr_node* node = pbg_get_node(e, nodei);
-	node->_type = PBG_LT_DATE;
-	node->_int = sizeof(pbg_date_lt);
-	node->_data = malloc(node->_int);
-	if(node->_data == NULL) {
-		pbg_err_alloc(err, __LINE__, __FILE__);
-		return 0;
-	}
-	pbg_todate((pbg_date_lt*)node->_data, str, n);
-	/* Done! */
-	return nodei;
-}
-
-int pbg_create_lt_number(pbg_expr* e, pbg_error* err, char* str, int n)
-{
-	/* Static nodes have positive indices. */
-	int nodei = 1 + e->_staticsz++;
-	/* Initialize node! */
-	pbg_expr_node* node = pbg_get_node(e, nodei);
-	node->_type = PBG_LT_NUMBER;
-	node->_int = sizeof(pbg_number_lt);
-	node->_data = malloc(node->_int);
-	if(node->_data == NULL) {
-		pbg_err_alloc(err, __LINE__, __FILE__);
-		return 0;
-	}
-	pbg_tonumber((pbg_number_lt*)node->_data, str, n);
-	/* Done! */
-	return nodei;
-}
-
-int pbg_create_lt_string(pbg_expr* e, pbg_error* err, char* str, int n)
-{
-	/* Static nodes have positive indices. */
-	int nodei = 1 + e->_staticsz++;
-	/* Initialize node! */
-	pbg_expr_node* node = pbg_get_node(e, nodei);
-	node->_type = PBG_LT_STRING;
-	node->_int = (n-2) * sizeof(pbg_string_lt);
-	node->_data = malloc(node->_int);
-	if(node->_data == NULL) {
-		pbg_err_alloc(err, __LINE__, __FILE__);
-		return 0;
-	}
-	memcpy(node->_data, str+1, n-2);
-	/* Done! */
-	return nodei;
-}
-
-
-/************************
- *                      *
- * NODE PARSING TOOLKIT *
- *                      *
- ************************/
 
 /**
  * Checks if the operator can legally take the specified number of arguments.
@@ -372,7 +379,7 @@ int pbg_create_lt_string(pbg_expr* e, pbg_error* err, char* str, int n)
  * @return 1 if the number of arguments can be legally given to the operator, 
  *         0 if not or if type does not refer to an operator.
  */
-inline int pbg_check_op_arity(pbg_node_type type, int numargs)
+inline int pbg_check_op_arity(pbg_field_type type, int numargs)
 {
 	int arity = 0;
 	/* Positive arity specifies "exact arity," i.e. the number of arguments 
@@ -405,17 +412,17 @@ inline int pbg_check_op_arity(pbg_node_type type, int numargs)
 int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str, 
 		int** fields, int** lengths, int** closings)
 {
-	int nodei;  /* Index of this node. This is the return value. */
+	int fieldi;  /* Index of this field. This is the return value. */
 	
 	/* Cache length of field for easier referencing. */
 	int n = **lengths;
-	int fieldi = **fields;
+	int strfieldstart = **fields;
 	
-	/* Update pointers for next node. */
+	/* Update pointers for next field. */
 	(*fields)++, (*lengths)++;
 	
 	/* Identify type of field. If the type cannot be resolve, throw an error. */
-	pbg_node_type type = pbg_gettype(str + fieldi, n);
+	pbg_field_type type = pbg_gettype(str + strfieldstart, n);
 	if(type == PBG_UNKNOWN) {
 		pbg_err_unknown_type(err, __LINE__, __FILE__);
 		return 0;
@@ -423,17 +430,17 @@ int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str,
 	
 	/* This field is an operator. */
 	if(type > PBG_MAX_LT && type < PBG_MAX_OP) {
-		pbg_expr_node* node;
+		pbg_field* field;
 		
-		/* Maximum number of children this node has allocated space for. */
+		/* Maximum number of children this field has allocated space for. */
 		int maxc = 2;
-		/* Initialize node and record node index. */
-		nodei = pbg_create_op(e, err, type, maxc);
-		node = pbg_get_node(e, nodei);
+		/* Initialize field and record field index. */
+		fieldi = pbg_store_static(e, pbg_make_op(err, type, maxc));
+		field = pbg_field_get(e, fieldi);
 		/* Propagate error back to caller, if any. */
-		if(nodei == 0) return 0;
+		if(fieldi == 0) return 0;
 		
-		/* Recursively build subtree rooted at this operator node. pbg_evaluate 
+		/* Recursively build subtree rooted at this operator field. pbg_evaluate 
 		 * set last element in fields to -1. This is used to ensure we don't 
 		 * run past the end of the expression string. */
 		while(**fields != -1 && **fields < **closings) {
@@ -442,54 +449,64 @@ int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str,
 			/* Propagate error back to caller, if any. */
 			if(childi == 0) return 0;
 			/* Expand array of children if necessary. */
-			if(node->_int == maxc) {
+			if(field->_int == maxc) {
 				maxc *= 2;  // doubling gives amortized O(1) time insertion
-				int* children = (int*) realloc(node->_data, maxc * sizeof(int));
+				int* children = (int*) realloc(field->_data, maxc * sizeof(int));
 				if(children == NULL) {
 					pbg_err_alloc(err, __LINE__, __FILE__);
 					return 0;
 				}
-				node->_data = (void*) children;
+				field->_data = (void*) children;
 			}
-			/* Store index of child node. */
-			((int*)node->_data)[node->_int++] = childi;
+			/* Store index of child field. */
+			((int*)field->_data)[field->_int++] = childi;
 		}
 		
 		/* Enforce operator arity. */
-		if(pbg_check_op_arity(type, node->_int) == 0) {
-			pbg_err_op_arity(err, __LINE__, __FILE__, type, node->_int);
+		if(pbg_check_op_arity(type, field->_int) == 0) {
+			pbg_err_op_arity(err, __LINE__, __FILE__, type, field->_int);
 			return 0;
 		}
 		
 		/* Tighten list of children and save it. */
-		int* children = (int*) realloc(node->_data, node->_int * sizeof(int));
+		int* children = (int*) realloc(field->_data, field->_int * sizeof(int));
 		if(children == NULL) {
 			pbg_err_alloc(err, __LINE__, __FILE__);
 			return 0;
 		}
-		node->_data = (void*) children;
+		field->_data = (void*) children;
 		
-		/* This node read all of its children until the next closing. 
-		 * The parent node will need to read until the end of the next 
+		/* This field read all of its children until the next closing. 
+		 * The parent field will need to read until the end of the next 
 		 * next one. */
 		(*closings)++;
 		
 	/* This field is a literal. */
 	}else{
 		/* Move str to correct starting position. */
-		str += fieldi;
-		/* Identify type of literal and initialize the node! */
+		str += strfieldstart;
+		/* Identify type of literal and initialize the field! */
 		switch(type) {
-			case PBG_LT_KEY: nodei = pbg_create_lt_key(e, err, str, n); break;
-			case PBG_LT_DATE: nodei = pbg_create_lt_date(e, err, str, n); break;
-			case PBG_LT_NUMBER: nodei = pbg_create_lt_number(e, err, str, n); break;
-			case PBG_LT_STRING: nodei = pbg_create_lt_string(e, err, str, n); break;
+			case PBG_LT_KEY:
+				fieldi = pbg_store_dynamic(e, pbg_make_key(err, str, n));
+				break;
+			case PBG_LT_DATE:
+				fieldi = pbg_store_static(e, pbg_make_date(err, str, n));
+				break;
+			case PBG_LT_NUMBER:
+				fieldi = pbg_store_static(e, pbg_make_number(err, str, n));
+				break;
+			case PBG_LT_STRING:
+				fieldi = pbg_store_static(e, pbg_make_string(err, str, n));
+				break;
 			case PBG_LT_TRUE:
 			case PBG_LT_FALSE:
 			case PBG_LT_TP_DATE:
 			case PBG_LT_TP_BOOL:
 			case PBG_LT_TP_NUMBER:
-			case PBG_LT_TP_STRING: nodei = pbg_create_lt(e, type); break;
+			case PBG_LT_TP_STRING:
+				fieldi = pbg_store_static(e, pbg_make_field(type));
+				break;
 			default:
 				pbg_err_unknown_type(err, __LINE__, __FILE__);
 				return 0;
@@ -497,19 +514,20 @@ int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str,
 	}
 	
 	/* Done! */
-	return nodei;
+	return fieldi;
 }
 
 void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 {
-	// TODO verify str is an element of PBG (syntactically, not semantically)
+	/* Always start with a clean error! */
+	pbg_error_init(err);
 	
 	/* Set to NULL to allow for pbg_free to check if needing free. */
 	e->_static = NULL;
 	e->_dynamic = NULL;
 	
 	/* These are initialized to 0 as they are used as counters for the number 
-	 * of each type of node created. In the end they should be equal to the 
+	 * of each type of field created. In the end they should be equal to the 
 	 * associated local variables here. */
 	e->_staticsz = 0;
 	e->_dynamicsz = 0;
@@ -644,14 +662,14 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 	 * in pbg_parse_r. */
 	fields[numfields] = -1;
 	
-	/* Allocate space for static and dynamic node arrays. */
-	e->_static = (pbg_expr_node*) malloc(numstatic * sizeof(pbg_expr_node));
+	/* Allocate space for static and dynamic field arrays. */
+	e->_static = (pbg_field*) malloc(numstatic * sizeof(pbg_field));
 	if(e->_static == NULL) {
 		free(fields), free(lengths), free(closings);
 		pbg_err_alloc(err, __LINE__, __FILE__);
 		return;
 	}
-	e->_dynamic = (pbg_expr_node*) malloc(numdynamic * sizeof(pbg_expr_node));
+	e->_dynamic = (pbg_field*) malloc(numdynamic * sizeof(pbg_field));
 	if(e->_dynamic == NULL) {
 		free(e->_static);
 		free(fields), free(lengths), free(closings);
@@ -682,62 +700,62 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 }
 
 
-/***************************
- *                         *
- * NODE EVALUATION TOOLKIT *
- *                         *
- ***************************/
+/****************************
+ *                          *
+ * FIELD EVALUATION TOOLKIT *
+ *                          *
+ ****************************/
 
-int pbg_evaluate_op_not(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
+int pbg_evaluate_op_not(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	int child0 = ((int*)node->_data)[0];
-	int result = pbg_evaluate_r(e, err, pbg_get_node(e, child0));
+	int child0 = ((int*)field->_data)[0];
+	int result = pbg_evaluate_r(e, err, pbg_field_get(e, child0));
 	if(result == -1) return -1;  /* Pass error through. */
 	return !result;
 }
 
-int pbg_evaluate_op_and(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
+int pbg_evaluate_op_and(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	int size = node->_int;
+	int size = field->_int;
 	for(int i = 0; i < size; i++) {
-		int childi = ((int*)node->_data)[i];
-		int result = pbg_evaluate_r(e, err, pbg_get_node(e, childi));
+		int childi = ((int*)field->_data)[i];
+		int result = pbg_evaluate_r(e, err, pbg_field_get(e, childi));
 		if(result == -1) return -1;  /* Pass error through. */
 		if(result == 0)  return  0;  /* FALSE! */
 	}
 	return 1;  /* TRUE! */
 }
 
-int pbg_evaluate_op_or(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
+int pbg_evaluate_op_or(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	int size = node->_int;
+	int size = field->_int;
 	for(int i = 0; i < size; i++) {
-		int childi = ((int*)node->_data)[i];
-		int result = pbg_evaluate_r(e, err, pbg_get_node(e, childi));
+		int childi = ((int*)field->_data)[i];
+		int result = pbg_evaluate_r(e, err, pbg_field_get(e, childi));
 		if(result == -1) return -1;  /* Pass error through. */
 		if(result == 1)  return  1;  /* TRUE! */
 	}
 	return 0;  /* FALSE! */
 }
 
-int pbg_evaluate_op_exst(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
+int pbg_evaluate_op_exst(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
 	PBG_UNUSED(err);
-	int child0 = ((int*)node->_data)[0];
-	pbg_expr_node* c0 = pbg_get_node(e, child0);
+	int child0 = ((int*)field->_data)[0];
+	pbg_field* c0 = pbg_field_get(e, child0);
 	return c0->_type != PBG_UNKNOWN;
 }
 
-int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
+int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
 	PBG_UNUSED(err);
 	/* Ensure type and size of all children are identical. */
-	int size = node->_int;
-	int child0 = ((int*)node->_data)[0];
-	pbg_expr_node* c0 = pbg_get_node(e, child0);
+	int size = field->_int;
+	int child0 = ((int*)field->_data)[0];
+	pbg_field* c0 = pbg_field_get(e, child0);
 	for(int i = 1; i < size; i++) {
-		int childi = ((int*)node->_data)[i];
-		pbg_expr_node* ci = pbg_get_node(e, childi);
+		int childi = ((int*)field->_data)[i];
+		pbg_field* ci = pbg_field_get(e, childi);
 		if(ci->_int != c0->_int || 
 				ci->_type != c0->_type)
 			return 0;  /* FALSE! */
@@ -748,22 +766,22 @@ int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 	return 1;  /* TRUE! */
 }
 
-int pbg_evaluate_op_neq(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
+int pbg_evaluate_op_neq(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
 	PBG_UNUSED(err);
-	int child0 = ((int*)node->_data)[0], child1 = ((int*)node->_data)[1];
-	pbg_expr_node* c0 = pbg_get_node(e, child0);
-	pbg_expr_node* c1 = pbg_get_node(e, child1);
+	int child0 = ((int*)field->_data)[0], child1 = ((int*)field->_data)[1];
+	pbg_field* c0 = pbg_field_get(e, child0);
+	pbg_field* c1 = pbg_field_get(e, child1);
 	return c1->_type != c0->_type || 
 			c1->_int != c0->_int || 
 			memcmp(c1->_data, c0->_data, c0->_int);
 }
 
-int pbg_evaluate_op_lt(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
+int pbg_evaluate_op_lt(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	int child0 = ((int*)node->_data)[0], child1 = ((int*)node->_data)[1];
-	pbg_expr_node* c0 = pbg_get_node(e, child0);
-	pbg_expr_node* c1 = pbg_get_node(e, child1);
+	int child0 = ((int*)field->_data)[0], child1 = ((int*)field->_data)[1];
+	pbg_field* c0 = pbg_field_get(e, child0);
+	pbg_field* c1 = pbg_field_get(e, child1);
 	/* Both are NUMBERs. */
 	if(c0->_type == PBG_LT_NUMBER &&
 			c1->_type == PBG_LT_NUMBER) {
@@ -783,11 +801,11 @@ int pbg_evaluate_op_lt(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 	return -1;
 }
 
-int pbg_evaluate_op_gt(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
+int pbg_evaluate_op_gt(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	int child0 = ((int*)node->_data)[0], child1 = ((int*)node->_data)[1];
-	pbg_expr_node* c0 = pbg_get_node(e, child0);
-	pbg_expr_node* c1 = pbg_get_node(e, child1);
+	int child0 = ((int*)field->_data)[0], child1 = ((int*)field->_data)[1];
+	pbg_field* c0 = pbg_field_get(e, child0);
+	pbg_field* c1 = pbg_field_get(e, child1);
 	/* Both are NUMBERs. */
 	if(c0->_type == PBG_LT_NUMBER &&
 			c1->_type == PBG_LT_NUMBER) {
@@ -807,11 +825,11 @@ int pbg_evaluate_op_gt(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 	return -1;
 }
 
-int pbg_evaluate_op_lte(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
+int pbg_evaluate_op_lte(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	int child0 = ((int*)node->_data)[0], child1 = ((int*)node->_data)[1];
-	pbg_expr_node* c0 = pbg_get_node(e, child0);
-	pbg_expr_node* c1 = pbg_get_node(e, child1);
+	int child0 = ((int*)field->_data)[0], child1 = ((int*)field->_data)[1];
+	pbg_field* c0 = pbg_field_get(e, child0);
+	pbg_field* c1 = pbg_field_get(e, child1);
 	/* Both are NUMBERs. */
 	if(c0->_type == PBG_LT_NUMBER &&
 			c1->_type == PBG_LT_NUMBER) {
@@ -831,11 +849,11 @@ int pbg_evaluate_op_lte(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 	return -1;
 }
 
-int pbg_evaluate_op_gte(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
+int pbg_evaluate_op_gte(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	int child0 = ((int*)node->_data)[0], child1 = ((int*)node->_data)[1];
-	pbg_expr_node* c0 = pbg_get_node(e, child0);
-	pbg_expr_node* c1 = pbg_get_node(e, child1);
+	int child0 = ((int*)field->_data)[0], child1 = ((int*)field->_data)[1];
+	pbg_field* c0 = pbg_field_get(e, child0);
+	pbg_field* c1 = pbg_field_get(e, child1);
 	/* Both are NUMBERs. */
 	if(c0->_type == PBG_LT_NUMBER &&
 			c1->_type == PBG_LT_NUMBER) {
@@ -855,12 +873,12 @@ int pbg_evaluate_op_gte(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 	return -1;
 }
 
-int pbg_evaluate_op_typeof(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
+int pbg_evaluate_op_typeof(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	int size = node->_int;
-	int child0 = ((int*)node->_data)[0];
-	pbg_expr_node* c0 = pbg_get_node(e, child0);
-	pbg_node_type type = c0->_type;
+	int size = field->_int;
+	int child0 = ((int*)field->_data)[0];
+	pbg_field* c0 = pbg_field_get(e, child0);
+	pbg_field_type type = c0->_type;
 	/* Ensure the first argument is a type literal. */
 	if(type < PBG_MIN_LT_TP || type > PBG_MAX_LT_TP) {
 		pbg_err_op_arg_type(err, __LINE__, __FILE__);
@@ -868,8 +886,8 @@ int pbg_evaluate_op_typeof(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 	}
 	/* Verify types of all trailing arguments. */
 	for(int i = 1; i < size; i++) {
-		int childi = ((int*)node->_data)[i];
-		pbg_expr_node* ci = pbg_get_node(e, childi);
+		int childi = ((int*)field->_data)[i];
+		pbg_field* ci = pbg_field_get(e, childi);
 		if(type == PBG_LT_TP_BOOL && 
 				ci->_type != PBG_LT_TRUE && ci->_type != PBG_LT_FALSE)
 			return 0;  /* FALSE */
@@ -886,12 +904,12 @@ int pbg_evaluate_op_typeof(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 /**
  * TODO
  */
-int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
+int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	/* This is a literal node! */
-	if(node->_type < PBG_MAX_LT) {
-		if(node->_type == PBG_LT_TRUE)  return 1;
-		if(node->_type == PBG_LT_FALSE) return 0;
+	/* This is a literal field! */
+	if(field->_type < PBG_MAX_LT) {
+		if(field->_type == PBG_LT_TRUE)  return 1;
+		if(field->_type == PBG_LT_FALSE) return 0;
 		
 		/* TRUE and FALSE are the only literals with truth values. 
 		 * If we get here, there's a bug, and we need to throw an error. */
@@ -899,20 +917,20 @@ int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 				"Cannot evaluate a literal without a truth value.");
 		return -1;
 		
-	/* This is an operator node! */
+	/* This is an operator field! */
 	}else {
-		switch(node->_type) {
-			case PBG_OP_NOT:  return pbg_evaluate_op_not(e, err, node);
-			case PBG_OP_AND:  return pbg_evaluate_op_and(e, err, node);
-			case PBG_OP_OR:   return pbg_evaluate_op_or(e, err, node);
-			case PBG_OP_EXST: return pbg_evaluate_op_exst(e, err, node);
-			case PBG_OP_EQ:   return pbg_evaluate_op_eq(e, err, node);
-			case PBG_OP_NEQ:  return pbg_evaluate_op_neq(e, err, node);
-			case PBG_OP_LT:   return pbg_evaluate_op_lt(e, err, node);
-			case PBG_OP_GT:   return pbg_evaluate_op_gt(e, err, node);
-			case PBG_OP_LTE:  return pbg_evaluate_op_lte(e, err, node);
-			case PBG_OP_GTE:  return pbg_evaluate_op_gte(e, err, node);
-			case PBG_OP_TYPE: return pbg_evaluate_op_typeof(e, err, node);
+		switch(field->_type) {
+			case PBG_OP_NOT:  return pbg_evaluate_op_not(e, err, field);
+			case PBG_OP_AND:  return pbg_evaluate_op_and(e, err, field);
+			case PBG_OP_OR:   return pbg_evaluate_op_or(e, err, field);
+			case PBG_OP_EXST: return pbg_evaluate_op_exst(e, err, field);
+			case PBG_OP_EQ:   return pbg_evaluate_op_eq(e, err, field);
+			case PBG_OP_NEQ:  return pbg_evaluate_op_neq(e, err, field);
+			case PBG_OP_LT:   return pbg_evaluate_op_lt(e, err, field);
+			case PBG_OP_GT:   return pbg_evaluate_op_gt(e, err, field);
+			case PBG_OP_LTE:  return pbg_evaluate_op_lte(e, err, field);
+			case PBG_OP_GTE:  return pbg_evaluate_op_gte(e, err, field);
+			case PBG_OP_TYPE: return pbg_evaluate_op_typeof(e, err, field);
 			default:
 				pbg_err_unknown_type(err, __LINE__, __FILE__);
 				return -1;
@@ -922,22 +940,25 @@ int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 	
 }
 
-int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_expr_node (*dict)(char*, int))
+int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_field (*dict)(char*, int))
 {
+	/* Always start with a clean error! */
+	pbg_error_init(err);
+	
 	/* KEY resolution. Lookup every key in provided dictionary. */
-	pbg_expr_node* dynamics;
-	dynamics = (pbg_expr_node*) malloc(e->_dynamicsz * sizeof(pbg_expr_node));
+	pbg_field* dynamics;
+	dynamics = (pbg_field*) malloc(e->_dynamicsz * sizeof(pbg_field));
 	if(dynamics == NULL) {
 		pbg_err_alloc(err, __LINE__, __FILE__);
 		return -1;
 	}
 	for(int i = 0; i < e->_dynamicsz; i++) {
-		pbg_expr_node* keylt = e->_dynamic+i;
+		pbg_field* keylt = e->_dynamic+i;
 		dynamics[i] = dict((char*)(keylt->_data), keylt->_int);
 	}
 	
 	/* Swap out KEY literals with dictionary equivalents. */
-	pbg_expr_node* old = e->_dynamic;
+	pbg_field* old = e->_dynamic;
 	e->_dynamic = dynamics;
 	
 	/* Evaluate expression! */
@@ -948,7 +969,7 @@ int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_expr_node (*dict)(char*, int))
 	
 	/* Clean up malloc'd memory. */
 	for(int i = 0; i < e->_dynamicsz; i++)
-		pbg_free_node(dynamics+i);
+		pbg_field_free(dynamics+i);
 	free(dynamics);
 	
 	/* Done! */
@@ -961,18 +982,27 @@ int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_expr_node (*dict)(char*, int))
  * JANITORIAL FUNCTIONS *
  *                      *
  ************************/
+ 
+void pbg_error_init(pbg_error* err)
+{
+	err->_type = PBG_ERR_NONE;
+	err->_line = 0;
+	err->_file = NULL;
+	err->_int = 0;
+	err->_data = NULL;
+}
 
 void pbg_free(pbg_expr* e)
 {
-	/* Free individual static nodes. Some do not have _data malloc'd. */
+	/* Free individual static fields. Some do not have _data malloc'd. */
 	for(int i = e->_staticsz-1; i >= 0; i--)
-		pbg_free_node(e->_static+i);
+		pbg_field_free(e->_static+i);
 	
-	/* Free individual dynamic nodes. All have _data malloc'd. */
+	/* Free individual dynamic fields. All have _data malloc'd. */
 	for(int i = 0; i < e->_dynamicsz; i++)
-		pbg_free_node(e->_dynamic+i);
+		pbg_field_free(e->_dynamic+i);
 	
-	/* Free internal node arrays. */
+	/* Free internal field arrays. */
 	if(e->_static != NULL) free(e->_static);
 	if(e->_static != NULL) free(e->_dynamic);
 }
@@ -985,11 +1015,11 @@ void pbg_free(pbg_expr* e)
  *********************************/
  
 /**
- * Translates the given pbg_node_type to a human-readable string.
- * @param type  PBG node type to translate.
- * @return String representation of the given node type.
+ * Translates the given pbg_field_type to a human-readable string.
+ * @param type  PBG field type to translate.
+ * @return String representation of the given field type.
  */
-char* pbg_type_str(pbg_node_type type)
+char* pbg_type_str(pbg_field_type type)
 {
 	switch(type) {
 		case PBG_LT_TRUE: return "PBG_LT_TRUE";
@@ -1031,7 +1061,12 @@ char* pbg_error_str(pbg_error_type type)
 	return "PBG_ERR_???";
 }
 
-pbg_node_type pbg_gettype(char* str, int n)
+int pbg_iserror(pbg_error* err)
+{
+	return err->_type != PBG_ERR_NONE;
+}
+
+pbg_field_type pbg_gettype(char* str, int n)
 {
 	/* Is it a literal? */
 	if(pbg_istrue(str, n))   return PBG_LT_TRUE;

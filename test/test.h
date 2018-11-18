@@ -26,11 +26,11 @@ void pbg_err_print(pbg_error* err);
 /**
  * Tests pbg_gettype.
  * @param str     String expression to parse.
- * @param expect  Expected type of string as represented by pbg_node_type.
+ * @param expect  Expected type of string as represented by pbg_field_type.
  * @return PBG_TEST_PASS if expect == pbg_gettype,
  *         PBG_TEST_FAIL if not.
  */
-int test_gettype(char* str, pbg_node_type expect);
+int test_gettype(char* str, pbg_field_type expect);
 
 /**
  * Tests pbg_evaluate.
@@ -42,7 +42,7 @@ int test_gettype(char* str, pbg_node_type expect);
  *         PBG_TEST_FAIL if not.
  */
 int test_evaluate(pbg_error* err, char* str, 
-		pbg_expr_node (*dict)(char*,int), int expect);
+		pbg_field (*dict)(char*,int), int expect);
 
 
 #endif /* __PBG_TEST_H__ */
