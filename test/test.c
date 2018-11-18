@@ -60,7 +60,6 @@ int suite_evaluate()
 	check(test_evaluate(&err, "(FALS)", dict, ERROR));
 	/* NOT */
 	check(test_evaluate(&err, "(!,FALSE)", dict, TRUE));
-	check(test_evaluate(&err, "(!,FALSE)", dict, TRUE));
 	check(test_evaluate(&err, "(!,TRUE)", dict, FALSE));
 	check(test_evaluate(&err, "(!,(=,10,10))", dict, FALSE));
 	check(test_evaluate(&err, "(!,(=,9,10))", dict, TRUE));
@@ -164,7 +163,6 @@ int suite_evaluate()
 	check(test_evaluate(&err, "(= ,2 ,2 )", dict, TRUE));
 	check(test_evaluate(&err, "( =,2,2)", dict, TRUE));
 	check(test_evaluate(&err, "(=,' hi ',' hi')", dict, FALSE));
-	check(test_evaluate(&err, "  (=,2,2)", dict, TRUE));
 	check(test_evaluate(&err, "(=,2,2)  ", dict, TRUE));
 	check(test_evaluate(&err, "(=,\n2,\n2\n)  ", dict, TRUE));
 	check(test_evaluate(&err, "    (   =   ,	2  ,  2)  ", dict, TRUE));
@@ -177,6 +175,11 @@ int suite_evaluate()
 	check(test_evaluate(&err, "(=)", dict, ERROR));
 	check(test_evaluate(&err, "(?)", dict, ERROR));
 	check(test_evaluate(&err, "(=,'hi','hi)", dict, ERROR));
+	check(test_evaluate(&err, "'test'", dict, ERROR));
+	check(test_evaluate(&err, "'", dict, ERROR));
+	check(test_evaluate(&err, "(!,()", dict, ERROR));
+	check(test_evaluate(&err, ")(!,TRUE)", dict, ERROR));
+//	check(test_evaluate(&err, "(=,2,   ,2)", dict, TRUE));  // trying to make this a syntax error
 	
 	end_test();
 }

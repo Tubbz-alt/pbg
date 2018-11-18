@@ -26,6 +26,12 @@ typedef struct {
 	pbg_node_type  _type;   /* Type of operator involved in error. */
 } pbg_op_arity_err;  /* PBG_ERR_OP_ARITY. */
 
+typedef struct {
+	char*  _msg;  /* Description of syntax error. */
+	char*  _str;  /* String in which error occurred. */
+	int    _i;    /* Index of error in string. */
+} pbg_syntax_err;  /* PBG_ERR_SYNTAX */
+
 
 /****************************
  *                          *
@@ -40,7 +46,7 @@ void pbg_free_node(pbg_expr_node* node);
 /* ERROR MANAGEMENT */
 void pbg_err_alloc(pbg_error* err, int line, char* file);
 void pbg_err_unknown_type(pbg_error* err, int line, char* file);
-void pbg_err_syntax(pbg_error* err, int line, char* file, char* msg);
+void pbg_err_syntax(pbg_error* err, int line, char* file, char* str, int i, char* msg);
 void pbg_err_op_arity(pbg_error* err, int line, char* file, pbg_node_type type, int arity);
 void pbg_err_state(pbg_error* err, int line, char* file, char* msg);
 void pbg_err_op_arg_type(pbg_error* err, int line, char* file);
@@ -134,18 +140,23 @@ void pbg_error_print(pbg_error* err)
 {
 	if(err->_type == PBG_ERR_NONE)
 		return;
-	pbg_op_arity_err* arityerr;
+	pbg_op_arity_err* arity;
+	pbg_syntax_err* syntax;
 	printf("error %s at %s:%d", 
 			pbg_error_str(err->_type), err->_file, err->_line);
 	switch(err->_type) {
-		case PBG_ERR_SYNTAX:
 		case PBG_ERR_STATE:
 			printf(": %s", (char*) err->_data);
 			break;
 		case PBG_ERR_OP_ARITY:
-			arityerr = (pbg_op_arity_err*) err->_data;
+			arity = (pbg_op_arity_err*) err->_data;
 			printf(": operator %s cannot take %d arguments!", 
-					pbg_type_str(arityerr->_type), arityerr->_arity);
+					pbg_type_str(arity->_type), arity->_arity);
+			break;
+		case PBG_ERR_SYNTAX:
+			syntax = (pbg_syntax_err*) err->_data;
+			printf(": %s -> %s", (char*) syntax->_msg, syntax->_str+syntax->_i);
+			break;
 		default:
 			break;
 	}
@@ -170,16 +181,23 @@ void pbg_err_unknown_type(pbg_error* err, int line, char* file)
 	err->_data = NULL;
 }
 
-void pbg_err_syntax(pbg_error* err, int line, char* file, char* msg)
+void pbg_err_syntax(pbg_error* err, int line, char* file, 
+		char* str, int i, char* msg)
 {
 	err->_type = PBG_ERR_SYNTAX;
 	err->_line = line;
 	err->_file = file;
-	err->_int = 0;
-	err->_data = msg;
+	err->_int = sizeof(pbg_syntax_err);
+	err->_data = malloc(err->_int);
+	if(err->_data == NULL) {
+		pbg_err_alloc(err, __LINE__, __FILE__); /* unfortunate. */
+		return;
+	}
+	*((pbg_syntax_err*)err->_data) = (pbg_syntax_err) { msg, str, i };
 }
 
-void pbg_err_op_arity(pbg_error* err, int line, char* file, pbg_node_type type, int arity)
+void pbg_err_op_arity(pbg_error* err, int line, char* file, 
+		pbg_node_type type, int arity)
 {
 	err->_type = PBG_ERR_OP_ARITY;
 	err->_line = line;
@@ -502,9 +520,10 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 	int depth = 0, reachedend = 0;
 	for(int i = 0; i < n; i++) {
 		/* Check if we're in a string or not. */
-		if((!instring && str[i] == '\'') || 
-				(instring && str[i] == '\'' && str[i-1] != '\\'))
-			instring = 1 - instring;
+		if(!instring && str[i] == '\'')
+			instring = i;
+		else if(instring && str[i] == '\'' && str[i-1] != '\\')
+			instring = 0;
 		/* Nothing gets counted if we are in a string! */
 		if(!instring) {
 			if(str[i] == '(') depth++;
@@ -514,37 +533,38 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 				numclosings++, depth--;
 				/* Negative depth only occurs if unmatched closing parentheses. */
 				if(depth < 0) {
-					pbg_err_syntax(err, __LINE__, __FILE__, 
+					pbg_err_syntax(err, __LINE__, __FILE__, str, i,
 							"Too many closing parentheses.");
 					return;
 				}
 				/* Depth zero only legally occurs at the end. */
 				if(depth == 0 && !reachedend)
-					reachedend = 1;
+					reachedend = i;
 				else if(depth == 0 && reachedend) {
-					pbg_err_syntax(err, __LINE__, __FILE__, 
-							"Multiple statements.");
+					pbg_err_syntax(err, __LINE__, __FILE__, str, reachedend,
+							"More than one statement.");
 					return;
 				}
 			}
 		}
 	}
 	
-	/* Check if string is left unbounded. */
-	if(instring) {
-		pbg_err_syntax(err, __LINE__, __FILE__, "Unclosed string.");
-		return;
-	}
-	/* Check if some opening parentheses are left unclosed. */
-	if(depth != 0) {
-		pbg_err_syntax(err, __LINE__, __FILE__, 
-				"Unmatched opening parentheses.");
-		return;
-	}
 	/* Check if there are any parentheses at all . */
 	if(numclosings == 0) {
-		pbg_err_syntax(err, __LINE__, __FILE__, 
+		pbg_err_syntax(err, __LINE__, __FILE__, str, 0,
 				"Every PBG expression must be bound with parentheses.");
+		return;
+	}
+	/* Check if string is left unbounded. */
+	if(instring) {
+		pbg_err_syntax(err, __LINE__, __FILE__, str, instring, 
+				"Unclosed string.");
+		return;
+	}
+	/* Check if opening parentheses are left unclosed. */
+	if(depth != 0) {
+		pbg_err_syntax(err, __LINE__, __FILE__, str, 0,
+				"Unmatched opening parentheses.");
 		return;
 	}
 	
@@ -571,41 +591,34 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 		return;
 	}
 	
-	/* Remove leading whitespace. */
-	while(pbg_iswhitespace(*str)) str++;
-	/* Compute position of first field. */
-	if(str[0] == '(') {
-		int j = 1;
-		while(pbg_iswhitespace(str[j])) j++;
-		fields[0] = j;
-	}else
-		fields[0] = 0;
 	/* Compute position and lengths of each field & position of closings. */
-	for(int i=fields[0], c=0, f=0, open=1, instring=0; i < n; i++) {
+	for(int i=0, c=0, f=0, open=0, instring=0, lastnonwhite=0; i < n; i++) {
 		/* Check if we're in a string or not. */
 		if((!instring && str[i] == '\'') || 
 				(instring && str[i] == '\'' && str[i-1] != '\\'))
 			instring = 1 - instring;
 		/* Nothing gets opened, closed, or measured if we're in a string! */
 		if(!instring) {
-			if(str[i] == ')') {
-				int j = i-1;
-				while(pbg_iswhitespace(str[j])) j--;
-				closings[c++] = j+1;
-			}
+			if(str[i] == ')')
+				closings[c++] = i;
 			if(open && (str[i] == ')' || (str[i] == ',' && str[i-1] != ')'))) {
-				int j = i-1;
-				while(pbg_iswhitespace(str[j])) j--;
-				lengths[f] = j+1 - fields[f], f++;
-				open = 0;
+				lengths[f] = lastnonwhite - fields[f];
+				/* Fields cannot have zero length. */
+				if(lengths[f] == 0) {
+					free(fields), free(lengths), free(closings);
+					pbg_err_syntax(err, __LINE__, __FILE__, str, fields[f]-1,
+							"Zero-length field!.");
+					return;
+				}
+				open = 0, f++;
 			}
 			if(!open && (str[i] == '(' || (str[i] == ',' && str[i+1] != '('))) {
-				int j = i+1;
-				while(pbg_iswhitespace(str[j])) j++;
-				fields[f] = j;
+				do i++; while(pbg_iswhitespace(str[i]));
+				fields[f] = i--;
 				open = 1;
 			}
 		}
+		if(!pbg_iswhitespace(str[i])) lastnonwhite = i+1;
 	}
 	/* Needed to determine when we've reached the end of the expression string
 	 * in pbg_parse_r. */
