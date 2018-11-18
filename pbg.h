@@ -25,7 +25,18 @@
  * expression tree.
  */
 typedef enum {
-	PBG_UNKNOWN,    // Unknown expression type.
+	PBG_UNKNOWN,  // Unknown expression type.
+	
+	/* Type literals. */
+	PBG_MIN_LT_TP,
+	PBG_LT_TP_DATE,    // DATE TYPE literal
+	PBG_LT_TP_BOOL,    // TRUE/FALSE TYPE literal
+	PBG_LT_TP_NUMBER,  // NUMBER TYPE literal
+	PBG_LT_TP_STRING,  // STRING TYPE literal
+	// Add more TYPE literals here.
+	PBG_MAX_LT_TP,
+	
+	/* Literals. */
 	PBG_LT_TRUE,    // TRUE literal
 	PBG_LT_FALSE,   // FALSE literal
 	PBG_LT_NUMBER,  // NUMBER literal
@@ -34,6 +45,8 @@ typedef enum {
 	PBG_LT_KEY,     // KEY literal
 	// Add more literals here.
 	PBG_MAX_LT,     // END OF LITERALS!
+	
+	/* Operators. */
 	PBG_OP_NOT,   // !
 	PBG_OP_AND,   // &
 	PBG_OP_OR,    // |
@@ -44,6 +57,7 @@ typedef enum {
 	PBG_OP_NEQ,   // !=
 	PBG_OP_LTE,   // <=
 	PBG_OP_GTE,   // >=
+	PBG_OP_TYPE,  // @
 	// Add more operators here.
 	PBG_MAX_OP    // END OF OPS!
 } pbg_node_type;

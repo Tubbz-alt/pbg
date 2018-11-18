@@ -58,12 +58,11 @@ char* pbg_error_str(pbg_error_type type);
 
 /* NODE CREATION TOOLKIT */
 int pbg_create_op(pbg_expr* e, pbg_error* err, pbg_node_type type, int numchildren);
+int pbg_create_lt(pbg_expr* e, pbg_node_type type);
 int pbg_create_lt_key(pbg_expr* e, pbg_error* err, char* str, int n);
 int pbg_create_lt_date(pbg_expr* e, pbg_error* err, char* str, int n);
 int pbg_create_lt_number(pbg_expr* e, pbg_error* err, char* str, int n);
 int pbg_create_lt_string(pbg_expr* e, pbg_error* err, char* str, int n);
-int pbg_create_lt_true(pbg_expr* e, pbg_error* err, char* str, int n);
-int pbg_create_lt_false(pbg_expr* e, pbg_error* err, char* str, int n);
 
 /* NODE PARSING TOOLKIT */
 int pbg_check_op_arity(pbg_node_type type, int numargs);
@@ -81,11 +80,16 @@ int pbg_evaluate_op_lt(pbg_expr* e, pbg_error* err, pbg_expr_node* node);
 int pbg_evaluate_op_gt(pbg_expr* e, pbg_error* err, pbg_expr_node* node);
 int pbg_evaluate_op_lte(pbg_expr* e, pbg_error* err, pbg_expr_node* node);
 int pbg_evaluate_op_gte(pbg_expr* e, pbg_error* err, pbg_expr_node* node);
+int pbg_evaluate_op_typeof(pbg_expr* e, pbg_error* err, pbg_expr_node* node);
 
 /* JANITORIAL FUNCTIONS */
 // No local functions.
 
 /* CONVERSION & CHECKING TOOLKIT */
+int pbg_istypedate(char* str, int n);
+int pbg_istypenumber(char* str, int n);
+int pbg_istypebool(char* str, int n);
+int pbg_istypestring(char* str, int n);
 int pbg_istrue(char* str, int n);
 int pbg_isfalse(char* str, int n);
 int pbg_iskey(char* str, int n);
@@ -265,6 +269,19 @@ int pbg_create_op(pbg_expr* e, pbg_error* err, pbg_node_type type, int numchildr
 	return nodei;
 }
 
+int pbg_create_lt(pbg_expr* e, pbg_node_type type)
+{
+	/* Static nodes have positive indices. */
+	int nodei = 1 + e->_staticsz++;
+	/* Initialize node! */
+	pbg_expr_node* node = pbg_get_node(e, nodei);
+	node->_type = type;
+	node->_int = 0;
+	node->_data = NULL;
+	/* Done! */
+	return nodei;
+}
+
 int pbg_create_lt_key(pbg_expr* e, pbg_error* err, char* str, int n)
 {
 	/* Dynamic nodes have negative indices. 
@@ -339,34 +356,6 @@ int pbg_create_lt_string(pbg_expr* e, pbg_error* err, char* str, int n)
 	return nodei;
 }
 
-int pbg_create_lt_true(pbg_expr* e, pbg_error* err, char* str, int n)
-{
-	PBG_UNUSED(err); PBG_UNUSED(str); PBG_UNUSED(n);
-	/* Static nodes have positive indices. */
-	int nodei = 1 + e->_staticsz++;
-	/* Initialize node! */
-	pbg_expr_node* node = pbg_get_node(e, nodei);
-	node->_type = PBG_LT_TRUE;
-	node->_int = 0;
-	node->_data = NULL;
-	/* Done! */
-	return nodei;
-}
-
-int pbg_create_lt_false(pbg_expr* e, pbg_error* err, char* str, int n)
-{
-	PBG_UNUSED(err); PBG_UNUSED(str); PBG_UNUSED(n);
-	/* Static nodes have positive indices. */
-	int nodei = 1 + e->_staticsz++;
-	/* Initialize node! */
-	pbg_expr_node* node = pbg_get_node(e, nodei);
-	node->_type = PBG_LT_FALSE;
-	node->_int = 0;
-	node->_data = NULL;
-	/* Done! */
-	return nodei;
-}
-
 
 /************************
  *                      *
@@ -390,16 +379,17 @@ inline int pbg_check_op_arity(pbg_node_type type, int numargs)
 	 * must be exact. Negative arity specifies a "minimum arity," i.e. the 
 	 * minimum number of arguments needed. */
 	switch(type) {
-		case PBG_OP_NOT:  arity =  1; break;
-		case PBG_OP_AND:  arity = -2; break;
-		case PBG_OP_OR:   arity = -2; break;
-		case PBG_OP_EQ:   arity = -2; break;
-		case PBG_OP_LT:   arity =  2; break;
-		case PBG_OP_GT:   arity =  2; break;
-		case PBG_OP_EXST: arity =  1; break;
-		case PBG_OP_NEQ:  arity =  2; break;
-		case PBG_OP_LTE:  arity =  2; break;
-		case PBG_OP_GTE:  arity =  2; break;
+		case PBG_OP_NOT:   arity =  1; break;
+		case PBG_OP_AND:   arity = -2; break;
+		case PBG_OP_OR:    arity = -2; break;
+		case PBG_OP_EQ:    arity = -2; break;
+		case PBG_OP_LT:    arity =  2; break;
+		case PBG_OP_GT:    arity =  2; break;
+		case PBG_OP_EXST:  arity =  1; break;
+		case PBG_OP_NEQ:   arity =  2; break;
+		case PBG_OP_LTE:   arity =  2; break;
+		case PBG_OP_GTE:   arity =  2; break;
+		case PBG_OP_TYPE:  arity = -2; break;
 		default:
 			return 0;
 	}
@@ -489,15 +479,20 @@ int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str,
 		/* Move str to correct starting position. */
 		str += fieldi;
 		/* Identify type of literal and initialize the node! */
-		if(type == PBG_LT_KEY)         nodei = pbg_create_lt_key(e, err, str, n);
-		else if(type == PBG_LT_DATE)   nodei = pbg_create_lt_date(e, err, str, n);
-		else if(type == PBG_LT_NUMBER) nodei = pbg_create_lt_number(e, err, str, n);
-		else if(type == PBG_LT_STRING) nodei = pbg_create_lt_string(e, err, str, n);
-		else if(type == PBG_LT_TRUE)   nodei = pbg_create_lt_true(e, err, str, n);
-		else if(type == PBG_LT_FALSE)  nodei = pbg_create_lt_false(e, err, str, n);
-		else{
-			pbg_err_unknown_type(err, __LINE__, __FILE__);
-			return 0;
+		switch(type) {
+			case PBG_LT_KEY: nodei = pbg_create_lt_key(e, err, str, n); break;
+			case PBG_LT_DATE: nodei = pbg_create_lt_date(e, err, str, n); break;
+			case PBG_LT_NUMBER: nodei = pbg_create_lt_number(e, err, str, n); break;
+			case PBG_LT_STRING: nodei = pbg_create_lt_string(e, err, str, n); break;
+			case PBG_LT_TRUE:
+			case PBG_LT_FALSE:
+			case PBG_LT_TP_DATE:
+			case PBG_LT_TP_BOOL:
+			case PBG_LT_TP_NUMBER:
+			case PBG_LT_TP_STRING: nodei = pbg_create_lt(e, type); break;
+			default:
+				pbg_err_unknown_type(err, __LINE__, __FILE__);
+				return 0;
 		}
 	}
 	
@@ -742,12 +737,12 @@ int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 	pbg_expr_node* c0 = pbg_get_node(e, child0);
 	for(int i = 1; i < size; i++) {
 		int childi = ((int*)node->_data)[i];
-		pbg_expr_node* childni = pbg_get_node(e, childi);
-		if(childni->_int != c0->_int || 
-				childni->_type != c0->_type)
+		pbg_expr_node* ci = pbg_get_node(e, childi);
+		if(ci->_int != c0->_int || 
+				ci->_type != c0->_type)
 			return 0;  /* FALSE! */
 		/* Ensure each data byte is identical. */
-		if(memcmp(childni->_data, c0->_data, c0->_int) != 0)
+		if(memcmp(ci->_data, c0->_data, c0->_int) != 0)
 			return 0;  /* FALSE! */
 	}
 	return 1;  /* TRUE! */
@@ -860,6 +855,34 @@ int pbg_evaluate_op_gte(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 	return -1;
 }
 
+int pbg_evaluate_op_typeof(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
+{
+	int size = node->_int;
+	int child0 = ((int*)node->_data)[0];
+	pbg_expr_node* c0 = pbg_get_node(e, child0);
+	pbg_node_type type = c0->_type;
+	/* Ensure the first argument is a type literal. */
+	if(type < PBG_MIN_LT_TP || type > PBG_MAX_LT_TP) {
+		pbg_err_op_arg_type(err, __LINE__, __FILE__);
+		return -1;
+	}
+	/* Verify types of all trailing arguments. */
+	for(int i = 1; i < size; i++) {
+		int childi = ((int*)node->_data)[i];
+		pbg_expr_node* ci = pbg_get_node(e, childi);
+		if(type == PBG_LT_TP_BOOL && 
+				ci->_type != PBG_LT_TRUE && ci->_type != PBG_LT_FALSE)
+			return 0;  /* FALSE */
+		if(type == PBG_LT_TP_DATE && ci->_type != PBG_LT_DATE)
+			return 0;  /* FALSE */
+		if(type == PBG_LT_TP_NUMBER && ci->_type != PBG_LT_NUMBER)
+			return 0;  /* FALSE */
+		if(type == PBG_LT_TP_STRING && ci->_type != PBG_LT_STRING)
+			return 0;  /* FALSE */
+	}
+	return 1;  /* TRUE! */
+}
+
 /**
  * TODO
  */
@@ -889,6 +912,7 @@ int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_expr_node* node)
 			case PBG_OP_GT:   return pbg_evaluate_op_gt(e, err, node);
 			case PBG_OP_LTE:  return pbg_evaluate_op_lte(e, err, node);
 			case PBG_OP_GTE:  return pbg_evaluate_op_gte(e, err, node);
+			case PBG_OP_TYPE: return pbg_evaluate_op_typeof(e, err, node);
 			default:
 				pbg_err_unknown_type(err, __LINE__, __FILE__);
 				return -1;
@@ -1016,6 +1040,10 @@ pbg_node_type pbg_gettype(char* str, int n)
 	if(pbg_isstring(str, n)) return PBG_LT_STRING;
 	if(pbg_isdate(str, n))   return PBG_LT_DATE;
 	if(pbg_iskey(str, n))    return PBG_LT_KEY;
+	if(pbg_istypedate(str, n))    return PBG_LT_TP_DATE;
+	if(pbg_istypebool(str, n))    return PBG_LT_TP_BOOL;
+	if(pbg_istypenumber(str, n))  return PBG_LT_TP_NUMBER;
+	if(pbg_istypestring(str, n))  return PBG_LT_TP_STRING;
 	
 	/* Is it an operator? */
 	if(n == 1) {
@@ -1026,6 +1054,7 @@ pbg_node_type pbg_gettype(char* str, int n)
 		if(str[0] == '<') return PBG_OP_LT;
 		if(str[0] == '>') return PBG_OP_GT;
 		if(str[0] == '?') return PBG_OP_EXST;
+		if(str[0] == '@') return PBG_OP_TYPE;
 	}
 	if(n == 2) {
 		if(str[0] == '!' && str[1] == '=') return PBG_OP_NEQ;
@@ -1035,6 +1064,32 @@ pbg_node_type pbg_gettype(char* str, int n)
 	
 	/* It isn't anything! */
 	return PBG_UNKNOWN;
+}
+
+int pbg_istypedate(char* str, int n)
+{
+	return n == 4 && 
+		str[0]=='D' && str[1]=='A' && str[2]=='T' && str[3]=='E';
+}
+
+int pbg_istypenumber(char* str, int n)
+{
+	return n == 6 && 
+		str[0]=='N' && str[1]=='U' && str[2]=='M' && 
+		str[3]=='B' && str[4]=='E' && str[5]=='R';
+}
+
+int pbg_istypebool(char* str, int n)
+{
+	return n == 4 && 
+		str[0]=='B' && str[1]=='O' && str[2]=='O' && str[3]=='L';
+}
+
+int pbg_istypestring(char* str, int n)
+{
+	return n == 6 && 
+		str[0]=='S' && str[1]=='T' && str[2]=='R' && 
+		str[3]=='I' && str[4]=='N' && str[5]=='G';
 }
 
 int pbg_istrue(char* str, int n)

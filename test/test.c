@@ -211,6 +211,27 @@ int suite_evaluate()
 	check(test_evaluate(&err, "(>= 2018-10-12 2018-09-12)", dict, TRUE));
 	check(test_evaluate(&err, "(>= 2017-10-12 2018-10-12)", dict, FALSE));
 	check(test_evaluate(&err, "(>= 2018-10-12 2017-10-12)", dict, TRUE));
+	/* TYPE */
+	check(test_evaluate(&err, "(@ DATE 2018-10-12)", dict, TRUE));
+	check(test_evaluate(&err, "(@ DATE [a])", dict, FALSE));
+	check(test_evaluate(&err, "(@ DATE 2018-10-12 2017-10-12)", dict, TRUE));
+	check(test_evaluate(&err, "(@ DATE 2018-10-12 10)", dict, FALSE));
+	check(test_evaluate(&err, "(@ NUMBER 10)", dict, TRUE));
+	check(test_evaluate(&err, "(@ NUMBER [a])", dict, TRUE));
+	check(test_evaluate(&err, "(@ NUMBER 10 12 13)", dict, TRUE));
+	check(test_evaluate(&err, "(@ NUMBER 10 12 'hi' 13)", dict, FALSE));
+	check(test_evaluate(&err, "(@ STRING 'hi')", dict, TRUE));
+	check(test_evaluate(&err, "(@ STRING [a])", dict, FALSE));
+	check(test_evaluate(&err, "(@ STRING 'hi' 'a' 'b')", dict, TRUE));
+	check(test_evaluate(&err, "(@ STRING 'a' 12 'hi' 'b')", dict, FALSE));
+	check(test_evaluate(&err, "(@ BOOL TRUE)", dict, TRUE));
+	check(test_evaluate(&err, "(@ BOOL FALSE)", dict, TRUE));
+	check(test_evaluate(&err, "(@ BOOL TRUE FALSE TRUE TRUE FALSE)", dict, TRUE));
+	check(test_evaluate(&err, "(@ BOOL TRUE FALSE 10 TRUE FALSE)", dict, FALSE));
+	check(test_evaluate(&err, "(@ BOOL 10)", dict, FALSE));
+	check(test_evaluate(&err, "(@ BOOL 'hi')", dict, FALSE));
+	check(test_evaluate(&err, "(@)", dict, ERROR));
+	check(test_evaluate(&err, "(@ 10 10)", dict, ERROR));
 	
 	/* Whitespace insensitivity. */
 	check(test_evaluate(&err, "(>=  3  2)", dict, TRUE));
