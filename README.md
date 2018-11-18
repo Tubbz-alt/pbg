@@ -73,7 +73,7 @@ pbg_field dictionary(char* key, int n)
 The output is `FALSE` because `(?[d])` asks if the key `[d]` is defined in the dictionary, which it is not. The expression `(&(=[a][b])(?[d]))` is `TRUE`, however, because `(=[a][b])` asks if `[a]` and `[b]` are equal, which they are.
 
 
-## goals
+## design goals
 
 pbg is built with three goals in mind.
 
