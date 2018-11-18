@@ -187,12 +187,6 @@ int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_expr_node (*dict)(char*, int))
  */
 char* pbg_gets(pbg_expr* e, char** bufptr, int n);
 
-/**
- * Prints the expression in a human-readable tree format.
- * @param e  PBG expression to print.
- */
-void pbg_print(pbg_expr* e);
-
 
 /******************************************
  *                                        *
