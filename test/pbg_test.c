@@ -31,7 +31,7 @@ pbg_expr_node dict(char* key, int n)
 {
 	pbg_expr_node keylt;
 	keylt._type = PBG_UNKNOWN;
-	keylt._int = -1;
+	keylt._int = 0;
 	keylt._data = NULL;
 	if(key[0] == 'a' || key[0] == 'b') {
 		keylt._type = PBG_LT_NUMBER;
@@ -47,7 +47,6 @@ pbg_expr_node dict(char* key, int n)
 	return keylt;
 }
 
-
 /* Tests for pbg_evaluate. */
 int suite_evaluate()
 {
@@ -55,8 +54,10 @@ int suite_evaluate()
 	
 	/* TRUE */
 	check(test_evaluate(&err, "(TRUE)", dict, TRUE));
+	check(test_evaluate(&err, "(TRU)", dict, ERROR));
 	/* FALSE */
 	check(test_evaluate(&err, "(FALSE)", dict, FALSE));
+	check(test_evaluate(&err, "(FALS)", dict, ERROR));
 	/* NOT */
 	check(test_evaluate(&err, "(!,FALSE)", dict, TRUE));
 	check(test_evaluate(&err, "(!,FALSE)", dict, TRUE));
@@ -71,7 +72,9 @@ int suite_evaluate()
 	check(test_evaluate(&err, "(&,FALSE,FALSE)", dict, FALSE));
 	check(test_evaluate(&err, "(&,TRUE,TRUE,TRUE,TRUE,TRUE)", dict, TRUE));
 	check(test_evaluate(&err, "(&,TRUE,TRUE,TRUE,FALSE,TRUE)", dict, FALSE));
+	check(test_evaluate(&err, "(&,(&,FALSE,TRUE),TRUE)", dict, FALSE));
 	/* OR */
+	check(test_evaluate(&err, "(|,TRUE,TRUE)", dict, TRUE));
 	check(test_evaluate(&err, "(|,TRUE,TRUE)", dict, TRUE));
 	check(test_evaluate(&err, "(|,TRUE,FALSE)", dict, TRUE));
 	check(test_evaluate(&err, "(|,FALSE,TRUE)", dict, TRUE));
@@ -81,8 +84,12 @@ int suite_evaluate()
 	/* EXST */
 	check(test_evaluate(&err, "(?,[c])", dict, TRUE));
 	check(test_evaluate(&err, "(?,[d])", dict, FALSE));
+	check(test_evaluate(&err, "(?,[c],[c])", dict, ERROR));
+	check(test_evaluate(&err, "(?,[c],[c],[c])", dict, ERROR));
 	/* EQUAL */
 	check(test_evaluate(&err, "(=,10,10)", dict, TRUE));
+	check(test_evaluate(&err, "(=,10,10,10,10,10)", dict, TRUE));
+	check(test_evaluate(&err, "(=,10,10,10,9,10)", dict, FALSE));
 	check(test_evaluate(&err, "(=,9,10)", dict, FALSE));
 	check(test_evaluate(&err, "(=,10,9)", dict, FALSE));
 	check(test_evaluate(&err, "(=,'hi',9)", dict, FALSE));
@@ -159,7 +166,17 @@ int suite_evaluate()
 	check(test_evaluate(&err, "(=,' hi ',' hi')", dict, FALSE));
 	check(test_evaluate(&err, "  (=,2,2)", dict, TRUE));
 	check(test_evaluate(&err, "(=,2,2)  ", dict, TRUE));
+	check(test_evaluate(&err, "(=,\n2,\n2\n)  ", dict, TRUE));
 	check(test_evaluate(&err, "    (   =   ,	2  ,  2)  ", dict, TRUE));
+	
+	/* Stress test the syntax. */
+	check(test_evaluate(&err, "(>=,'hi',2)", dict, ERROR));
+	check(test_evaluate(&err, "(>=,2,'hi')", dict, ERROR));
+	check(test_evaluate(&err, "(=,'a',97)", dict, FALSE));
+	check(test_evaluate(&err, "()", dict, ERROR));
+	check(test_evaluate(&err, "(=)", dict, ERROR));
+	check(test_evaluate(&err, "(?)", dict, ERROR));
+	check(test_evaluate(&err, "(=,'hi','hi)", dict, ERROR));
 	
 	end_test();
 }
@@ -262,11 +279,14 @@ int test_evaluate(pbg_error* err, char* str, pbg_expr_node (*dict)(char*,int), i
 	pbg_parse(&e, err, str, strlen(str));
 	/* Return if there's an error. */
 	if(err->_type != PBG_ERR_NONE)
-		return (expect == -1) ? PBG_TEST_PASS : PBG_TEST_FAIL;
+		return (expect == ERROR) ? PBG_TEST_PASS : PBG_TEST_FAIL;
 	/* Evaluate the expression with the given dictionary. */
 	int output = pbg_evaluate(&e, err, dict);
 	/* Clean up. */
 	pbg_free(&e);
+	/* Return if there's an error. */
+	if(err->_type != PBG_ERR_NONE)
+		return (expect == ERROR) ? PBG_TEST_PASS : PBG_TEST_FAIL;
 	/* Did we pass?? */
 	return (expect == output) ? PBG_TEST_PASS : PBG_TEST_FAIL;
 }

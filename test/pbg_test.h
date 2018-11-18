@@ -8,25 +8,23 @@
 #define PBG_TEST_FAIL 1
 
 /* These are the expect values for test_evaluate. */
-#define TRUE   1
 #define FALSE  0
-#define ERROR -1
+#define TRUE   1
+#define ERROR  2
 
 /**
  * Prints the given error in a human-readable format.
  * @param err  Error to translate.
  */
-void pbg_err_print_reset(pbg_error* err)
+void pbg_err_print(pbg_error* err)
 {
 	if(err->_type != PBG_ERR_NONE) {
 		printf("---");
 		pbg_error_print(err);
-		pbg_error_free(err);
-		err->_type = PBG_ERR_NONE;
 	}
 }
 
-#define check(test) do { int _res = (test); if(_res != PBG_TEST_PASS) { _numfail++; printf("-failed: %s:%d\n", __FILE__, __LINE__); pbg_err_print_reset(&err); } } while(0)
+#define check(test) do { int _res = (test); if(_res != PBG_TEST_PASS) { _numfail++; printf("-failed: %s:%d\n", __FILE__, __LINE__); pbg_err_print(&err); } err._type=PBG_ERR_NONE; pbg_error_free(&err); } while(0)
 #define init_test() pbg_error err = (pbg_error) { PBG_ERR_NONE, 0, NULL, 0, NULL }; int _numfail = 0;
 #define end_test() if(err._type != PBG_ERR_NONE) pbg_error_free(&err); return _numfail
 #define summ_test(name,tester) do { int _numfail = (tester); if(_numfail != 0) printf("%s\tfailed %d tests!\n", (name), _numfail); else printf("%s\tpassed!\n", (name)); } while(0)

@@ -141,7 +141,7 @@ void pbg_err_op_arity(pbg_error* err, int line, char* file, pbg_node_type type, 
 	err->_int = sizeof(pbg_node_type);
 	err->_data = malloc(err->_int);
 	if(err->_data == NULL) {
-		pbg_err_alloc(err, __LINE__, __FILE__);  /* wtf?? */
+		pbg_err_alloc(err, __LINE__, __FILE__); /* unfortunate. */
 		return;
 	}
 	*((pbg_node_type*)err->_data) = type;
@@ -539,13 +539,12 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 			if(str[i] == ')') {
 				int j = i-1;
 				while(is_whitespace(str[j])) j--;
-				closings[c] = j+1;
+				closings[c++] = j+1;
 			}
 			if(open && (str[i] == ')' || (str[i] == ',' && str[i-1] != ')'))) {
 				int j = i-1;
 				while(is_whitespace(str[j])) j--;
-				lengths[f] = j+1 - fields[f];
-				f++;
+				lengths[f] = j+1 - fields[f++];
 				open = 0;
 			}
 			if(!open && (str[i] == '(' || (str[i] == ',' && str[i+1] != '('))) {
@@ -1169,5 +1168,5 @@ int is_a_digit(char c)
 
 int is_whitespace(char c)
 {
-	return c == ' ' || c == '\t';
+	return c == ' ' || c == '\t' || c == '\n';
 }
