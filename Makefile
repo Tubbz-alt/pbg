@@ -9,4 +9,4 @@ example:
 	gcc $(CFLAGS) test/example.c pbg.c -o test/example
 
 clean:
-	rm -rf test/tests test/tests.exe
+	rm -rf test/tests test/tests.exe test/example test/example.exe
