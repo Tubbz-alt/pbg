@@ -133,35 +133,35 @@ Given a string `S` generated using the [set of rules `R`](#rules), the library c
 
 ### functions
 
-#### void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n);
-Parses the string as a PBG expression. If a compilation error occurs, the provided error argument is initialized accordingly.
+#### void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
+Parse the string as a PBG expression. If a compilation error occurs, initialize the provided error argument accordingly.
 
-#### void pbg_free(pbg_expr* e);
-Destroys the PBG expression instance and frees all associated resources. If **pbg_parse** succeeds, this function must be called to free up internal resources.
+#### void pbg_free(pbg_expr* e)
+Destroy the PBG expression instance, and free all associated resources. If `pbg_parse` succeeds, this function must be called to free up internal resources.
 
-#### int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_expr_node (*dict)(char*, int));
-Evaluates the PBG expression with the provided assignments. If a runtime error occurs, the provided error argument is initialized accordingly.
+#### int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_expr_node (*dict)(char*, int))
+Evaluate the PBG expression with the provided dictionary. If a runtime error occurs, initialize the provided error argument accordingly.
 
-#### pbg_field pbg_make_field(pbg_field_type type);
-Makes a pbg_field representing the given type. Initializes everything other than the type to zero. This is useful for creating a TRUE, FALSE, or UNKNOWN field.
+#### pbg_field pbg_make_field(pbg_field_type type)
+Make a `pbg_field` representing the given type. Initialize everything other than the type to zero. This is useful for creating a `TRUE`, `FALSE`, or `UNKNOWN` field.
 
-#### pbg_field pbg_make_key(pbg_error* err, char* str, int n);
-Makes a pbg_field representing a KEY. Attempts to parse the given string as a KEY. If an error occurs during conversion, then err will be initialized with the relevant error, if it is not NULL.
+#### pbg_field pbg_make_key(pbg_error* err, char* str, int n)
+Parse `str` as a `KEY` literal, and return a `pbg_field` representing it.
 
-#### pbg_field pbg_make_date(pbg_error* err, char* str, int n);
-Makes a pbg_field representing a DATE. Attempts to parse the given string as a DATE. If an error occurs during conversion, then err will be initialized with the relevant error, if it is not NULL.
+#### pbg_field pbg_make_date(pbg_error* err, char* str, int n)
+Parse `str` as a `DATE` literal, and return a `pbg_field` representing it.
 
-#### pbg_field pbg_make_number(pbg_error* err, char* str, int n);
-Makes a pbg_field representing a NUMBER. Attempts to parse the given string as a NUMBER. If an error occurs during conversion, then err will be initialized with the relevant error, if it is not NULL.
+#### pbg_field pbg_make_number(pbg_error* err, char* str, int n)
+Parse `str` as a `NUMBER` literal, and return a `pbg_field` representing it.
 
-#### pbg_field pbg_make_string(pbg_error* err, char* str, int n);
-Makes a pbg_field representing a STRING. Attempts to parse the given string as a STRING. If an error occurs during conversion, then err will be initialized with the relevant error, if it is not NULL.
+#### pbg_field pbg_make_string(pbg_error* err, char* str, int n)
+Parse `str` as a `STRING` literal, and return a `pbg_field` representing it.
 
-#### pbg_node_type pbg_gettype(char* str, int n);
+#### pbg_node_type pbg_gettype(char* str, int n)
 Identifies the PBG expression type of the given string.
 
-#### void pbg_error_print(pbg_error* err);
+#### void pbg_error_print(pbg_error* err)
 Prints a human-readable representation of the given error.
 
-#### void pbg_error_free(pbg_error* e);
+#### void pbg_error_free(pbg_error* e)
 Frees resources being used by the given error, if any.
