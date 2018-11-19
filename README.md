@@ -118,7 +118,7 @@ A `NULL` literal represents... nothing. It is written as `NULL`. If a variable i
 
 ### opertions
 
-**pbg** supports a small set of essential operations.
+**pbg** supports a small set of essential operations. Every operation should be thought of as a function that accepts arguments of various types and returns a `BOOL`.
 
 ##### NOT
 
