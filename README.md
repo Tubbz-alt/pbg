@@ -199,6 +199,10 @@ BOOL
 
 This repository provides a lightweight implementation of a PBG compiler. It can be incorporated into an existing project by including `pbg.h`. Documentation of each API function is provided in `pbg.h` but is partially reproduced here for visibility. The library reserves the `pbg_` and `PBG_` prefixes.
 
+### literals & operators
+
+A literal type, as represented within the library, is the name of the type with the prefix 'PBG_'. So `NUMBER` is referred to as `PBG_NUMBER`. Operators are written using the abbreviations enumerated [above](#formal-definition).
+
 ### functions
 
 ```C
@@ -221,7 +225,7 @@ int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_expr_node (*dict)(char*, int))
 
 ```C
 /* Make a field representing the given type. Initialize everything other than 
- * the type to zero. This is useful for creating a `TRUE`, `FALSE`, or `UNKNOWN` field. */
+ * the type to zero. This is useful for creating a `TRUE`, `FALSE`, or `NULL` field. */
 pbg_field pbg_make_field(pbg_field_type type)
 ```
 
