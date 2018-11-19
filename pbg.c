@@ -68,6 +68,7 @@ int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str,
 		int** fields, int** lengths, int** closings);
 
 /* FIELD EVALUATION TOOLKIT */
+int pbg_isbool(pbg_field_type type);
 int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_field* field);
 int pbg_evaluate_op_not(pbg_expr* e, pbg_error* err, pbg_field* field);
 int pbg_evaluate_op_and(pbg_expr* e, pbg_error* err, pbg_field* field);
@@ -718,6 +719,18 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
  *                          *
  ****************************/
 
+/**
+ * Checks if the given type is an operator, TRUE, or FALSE. Useful for checking 
+ * if both arguments will have a valid return value from pbg_evaluate_r.
+ * @param type  Type to check.
+ * @return 1 if the given type is TRUE, FALSE, or an operator,
+ *         0 otherwise.
+ */
+int pbg_isbool(pbg_field_type type)
+{
+	return type == PBG_LT_TRUE || type == PBG_LT_FALSE || (type < PBG_MAX_OP && type > PBG_MIN_OP);
+}
+
 int pbg_evaluate_op_not(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
 	int child0 = ((int*)field->_data)[0];
@@ -765,17 +778,30 @@ int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_field* field)
 	int size = field->_int;
 	int child0 = ((int*)field->_data)[0];
 	pbg_field* c0 = pbg_field_get(e, child0);
-	for(int i = 1; i < size; i++) {
-		int childi = ((int*)field->_data)[i];
-		pbg_field* ci = pbg_field_get(e, childi);
-		if(ci->_int != c0->_int || 
-				ci->_type != c0->_type)
-			return 0;  /* FALSE! */
-		/* Ensure each data byte is identical. */
-		if(memcmp(ci->_data, c0->_data, c0->_int) != 0)
-			return 0;  /* FALSE! */
+	/* We have a bunch of BOOLs! Evaluate them. */
+	if(pbg_isbool(c0->_type)) {
+		int res = pbg_evaluate_r(e, err, c0);
+		for(int i = 1; i < size; i++) {
+			int childi = ((int*)field->_data)[i];
+			pbg_field* ci = pbg_field_get(e, childi);
+			if(res != pbg_evaluate_r(e, err, ci))
+				return 0;
+		}
+		return 1;
+	/* We don't have a bunch of BOOLs! Do standard equality test. */
+	}else{
+		for(int i = 1; i < size; i++) {
+			int childi = ((int*)field->_data)[i];
+			pbg_field* ci = pbg_field_get(e, childi);
+			if(ci->_int != c0->_int || 
+					ci->_type != c0->_type)
+				return 0;  /* FALSE! */
+			/* Ensure each data byte is identical. */
+			if(memcmp(ci->_data, c0->_data, c0->_int) != 0)
+				return 0;  /* FALSE! */
+		}
+		return 1;  /* TRUE! */
 	}
-	return 1;  /* TRUE! */
 }
 
 int pbg_evaluate_op_neq(pbg_expr* e, pbg_error* err, pbg_field* field)
@@ -784,7 +810,11 @@ int pbg_evaluate_op_neq(pbg_expr* e, pbg_error* err, pbg_field* field)
 	int child0 = ((int*)field->_data)[0], child1 = ((int*)field->_data)[1];
 	pbg_field* c0 = pbg_field_get(e, child0);
 	pbg_field* c1 = pbg_field_get(e, child1);
-	return c1->_type != c0->_type || 
+	/* We have two BOOLs! Evaluate them, and check if they are different. */
+	if(pbg_isbool(c0->_type) && pbg_isbool(c1->_type))
+		return pbg_evaluate_r(e, err, c0) != pbg_evaluate_r(e, err, c1);
+	/* We don't have a bunch of BOOLs! Do standard difference check. */
+	else return c1->_type != c0->_type || 
 			c1->_int != c0->_int || 
 			memcmp(c1->_data, c0->_data, c0->_int);
 }
@@ -796,19 +826,19 @@ int pbg_evaluate_op_lt(pbg_expr* e, pbg_error* err, pbg_field* field)
 	pbg_field* c1 = pbg_field_get(e, child1);
 	/* Both are NUMBERs. */
 	if(c0->_type == PBG_LT_NUMBER &&
-			c1->_type == PBG_LT_NUMBER) {
+			c1->_type == PBG_LT_NUMBER)
 		return pbg_cmpnumber(c0->_data, c1->_data) < 0;
-	}
 	/* Both are DATEs. */
 	if(c0->_type == PBG_LT_DATE &&
-			c1->_type == PBG_LT_DATE) {
+			c1->_type == PBG_LT_DATE)
 		return pbg_cmpdate(c0->_data, c1->_data) < 0;
-	}
 	/* Both are STRINGs. */
 	if(c0->_type == PBG_LT_STRING &&
-			c1->_type == PBG_LT_STRING) {
+			c1->_type == PBG_LT_STRING)
 		return pbg_cmpstring(c0->_data, c1->_data, c0->_int) < 0;
-	}
+	/* Both are BOOLs. */
+	if(pbg_isbool(c0->_type) && pbg_isbool(c1->_type))
+		return pbg_evaluate_r(e, err, c0) < pbg_evaluate_r(e, err, c1);
 	pbg_err_op_arg_type(err, __LINE__, __FILE__);
 	return -1;
 }
@@ -820,19 +850,19 @@ int pbg_evaluate_op_gt(pbg_expr* e, pbg_error* err, pbg_field* field)
 	pbg_field* c1 = pbg_field_get(e, child1);
 	/* Both are NUMBERs. */
 	if(c0->_type == PBG_LT_NUMBER &&
-			c1->_type == PBG_LT_NUMBER) {
+			c1->_type == PBG_LT_NUMBER)
 		return pbg_cmpnumber(c0->_data, c1->_data) > 0;
-	}
 	/* Both are DATEs. */
 	if(c0->_type == PBG_LT_DATE &&
-			c1->_type == PBG_LT_DATE) {
+			c1->_type == PBG_LT_DATE)
 		return pbg_cmpdate(c0->_data, c1->_data) > 0;
-	}
 	/* Both are STRINGs. */
 	if(c0->_type == PBG_LT_STRING &&
-			c1->_type == PBG_LT_STRING) {
+			c1->_type == PBG_LT_STRING)
 		return pbg_cmpstring(c0->_data, c1->_data, c0->_int) > 0;
-	}
+	/* Both are BOOLs. */
+	if(pbg_isbool(c0->_type) && pbg_isbool(c1->_type))
+		return pbg_evaluate_r(e, err, c0) > pbg_evaluate_r(e, err, c1);
 	pbg_err_op_arg_type(err, __LINE__, __FILE__);
 	return -1;
 }
@@ -844,19 +874,19 @@ int pbg_evaluate_op_lte(pbg_expr* e, pbg_error* err, pbg_field* field)
 	pbg_field* c1 = pbg_field_get(e, child1);
 	/* Both are NUMBERs. */
 	if(c0->_type == PBG_LT_NUMBER &&
-			c1->_type == PBG_LT_NUMBER) {
+			c1->_type == PBG_LT_NUMBER)
 		return pbg_cmpnumber(c0->_data, c1->_data) <= 0;
-	}
 	/* Both are DATEs. */
 	if(c0->_type == PBG_LT_DATE &&
-			c1->_type == PBG_LT_DATE) {
+			c1->_type == PBG_LT_DATE)
 		return pbg_cmpdate(c0->_data, c1->_data) <= 0;
-	}
 	/* Both are STRINGs. */
 	if(c0->_type == PBG_LT_STRING &&
-			c1->_type == PBG_LT_STRING) {
+			c1->_type == PBG_LT_STRING)
 		return pbg_cmpstring(c0->_data, c1->_data, c0->_int) <= 0;
-	}
+	/* Both are BOOLs. */
+	if(pbg_isbool(c0->_type) && pbg_isbool(c1->_type))
+		return pbg_evaluate_r(e, err, c0) <= pbg_evaluate_r(e, err, c1);
 	pbg_err_op_arg_type(err, __LINE__, __FILE__);
 	return -1;
 }
@@ -868,19 +898,19 @@ int pbg_evaluate_op_gte(pbg_expr* e, pbg_error* err, pbg_field* field)
 	pbg_field* c1 = pbg_field_get(e, child1);
 	/* Both are NUMBERs. */
 	if(c0->_type == PBG_LT_NUMBER &&
-			c1->_type == PBG_LT_NUMBER) {
+			c1->_type == PBG_LT_NUMBER)
 		return pbg_cmpnumber(c0->_data, c1->_data) >= 0;
-	}
 	/* Both are DATEs. */
 	if(c0->_type == PBG_LT_DATE &&
-			c1->_type == PBG_LT_DATE) {
+			c1->_type == PBG_LT_DATE)
 		return pbg_cmpdate(c0->_data, c1->_data) >= 0;
-	}
 	/* Both are STRINGs. */
 	if(c0->_type == PBG_LT_STRING &&
-			c1->_type == PBG_LT_STRING) {
+			c1->_type == PBG_LT_STRING)
 		return pbg_cmpstring(c0->_data, c1->_data, c0->_int) >= 0;
-	}
+	/* Both are BOOLs. */
+	if(pbg_isbool(c0->_type) && pbg_isbool(c1->_type))
+		return pbg_evaluate_r(e, err, c0) >= pbg_evaluate_r(e, err, c1);
 	pbg_err_op_arg_type(err, __LINE__, __FILE__);
 	return -1;
 }

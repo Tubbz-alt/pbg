@@ -33,7 +33,7 @@ pbg_field dict(char* key, int n)
 	keylt._type = PBG_NULL;
 	keylt._int = 0;
 	keylt._data = NULL;
-	if(key[0] == 'a' || key[0] == 'b') {
+	if(key[0] == 'a' || key[0] == 'b' || key[0] == '1') {
 		keylt._type = PBG_LT_NUMBER;
 		keylt._int = sizeof(double);
 		keylt._data = malloc(keylt._int);
@@ -258,8 +258,34 @@ int suite_evaluate()
 	check(test_evaluate(&err, "(!(= 10 10))", dict, FALSE));
 	check(test_evaluate(&err, "(&(= 10 10)(= 20 20))", dict, TRUE));
 	check(test_evaluate(&err, "(&(?[a])(?[b]))", dict, TRUE));
-//	check(test_evaluate(&err, "((TRUE))", dict, ERROR));   // TODO should these be syntax errors?
-//	check(test_evaluate(&err, "((FALSE))", dict, ERROR));
+//	check(test_evaluate(&err, "((TRUE))", dict, ERROR));   // TODO fixme!
+//	check(test_evaluate(&err, "TRUE", dict, TRUE));  // TODO fixme!
+	
+	/* Ensure operators work as expected with subexpressions. */
+	check(test_evaluate(&err, "(< (?[1])(?[1]))", dict, FALSE));
+	check(test_evaluate(&err, "(< (?[0])(?[1]))", dict, TRUE));
+	check(test_evaluate(&err, "(< (?[1])(?[0]))", dict, FALSE));
+	check(test_evaluate(&err, "(< (?[0])(?[0]))", dict, FALSE));
+	check(test_evaluate(&err, "(<= (?[1])(?[1]))", dict, TRUE));
+	check(test_evaluate(&err, "(<= (?[0])(?[1]))", dict, TRUE));
+	check(test_evaluate(&err, "(<= (?[1])(?[0]))", dict, FALSE));
+	check(test_evaluate(&err, "(<= (?[0])(?[0]))", dict, TRUE));
+	check(test_evaluate(&err, "(> (?[1])(?[1]))", dict, FALSE));
+	check(test_evaluate(&err, "(> (?[0])(?[1]))", dict, FALSE));
+	check(test_evaluate(&err, "(> (?[1])(?[0]))", dict, TRUE));
+	check(test_evaluate(&err, "(> (?[0])(?[0]))", dict, FALSE));
+	check(test_evaluate(&err, "(>= (?[1])(?[1]))", dict, TRUE));
+	check(test_evaluate(&err, "(>= (?[0])(?[1]))", dict, FALSE));
+	check(test_evaluate(&err, "(>= (?[1])(?[0]))", dict, TRUE));
+	check(test_evaluate(&err, "(>= (?[0])(?[0]))", dict, TRUE));
+	check(test_evaluate(&err, "(= (?[1])(?[1]))", dict, TRUE));
+	check(test_evaluate(&err, "(= (?[0])(?[1]))", dict, FALSE));
+	check(test_evaluate(&err, "(= (?[1])(?[0]))", dict, FALSE));
+	check(test_evaluate(&err, "(= (?[0])(?[0]))", dict, TRUE));
+	check(test_evaluate(&err, "(!= (?[1])(?[1]))", dict, FALSE));
+	check(test_evaluate(&err, "(!= (?[0])(?[1]))", dict, TRUE));
+	check(test_evaluate(&err, "(!= (?[1])(?[0]))", dict, TRUE));
+	check(test_evaluate(&err, "(!= (?[0])(?[0]))", dict, FALSE));
 	
 	end_test();
 }

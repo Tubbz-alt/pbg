@@ -89,6 +89,8 @@ Third, it must be **expressive**. Thoughts should be easily translated into conc
 The following grammar generates strings in **pbg**. We call these **PBG expressions**. The following is the grammar that can be used to generate expression strings in **pgb**:
 ```
 EXPR
+  = BOOL
+BOOL
   = (! BOOL)
   = (& BOOL BOOL ...)
   = (| BOOL BOOL ...)
@@ -100,18 +102,14 @@ EXPR
   = (>= ANY ANY)
   = (? ALL)
   = (@ TYPE ALL ...)
-  = (BOOL)
-ALL
-  = ANY
-  = NULL
+  = TRUE
+  = FALSE
 ANY
   = DATE
   = NUMBER
   = STRING
   = BOOL
-BOOL
-  = TRUE
-  = FALSE
+  = NULL
 ```
 
 This grammar is defined recursively, so a PBG expression can be elegantly represented by an abstract syntax tree (AST).
