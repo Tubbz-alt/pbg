@@ -58,6 +58,7 @@ char* pbg_error_str(pbg_error_type type);
 
 /* FIELD CREATION TOOLKIT */
 pbg_field pbg_make_op(pbg_error* err, pbg_field_type type, int numchildren);
+pbg_field pbg_make_var(pbg_error* err, char* str, int n);
 int pbg_store_constant(pbg_expr* e, pbg_field field);
 int pbg_store_variable(pbg_expr* e, pbg_field field);
 
@@ -270,15 +271,16 @@ pbg_field pbg_make_op(pbg_error* err, pbg_field_type type, int argc)
 	return field;
 }
 
-pbg_field pbg_make_field(pbg_field_type type)
-{
-	pbg_field field;
-	field._type = type;
-	field._int = 0;
-	field._data = NULL;
-	return field;
-}
-
+/**
+ * Makes a field representing a VAR. Attempts to parse the given string as a 
+ * VAR. If an error occurs during conversion, then err will be initialized with
+ * the relevant error, if it is not NULL.
+ * @param err  Used to store error, if any.
+ * @param str  String to parse as a VAR.
+ * @param n    Length of str.
+ * @return a new field with the PBG_LT_VAR type if successful,
+ *         a field with the PBG_NULL type otherwise.
+ */
 pbg_field pbg_make_var(pbg_error* err, char* str, int n)
 {
 	pbg_field field = pbg_make_field(PBG_NULL);
@@ -289,6 +291,15 @@ pbg_field pbg_make_var(pbg_error* err, char* str, int n)
 		if(err != NULL) pbg_err_alloc(err, __LINE__, __FILE__);
 	}else
 		memcpy(field._data, str+1, n-2);
+	return field;
+}
+
+pbg_field pbg_make_field(pbg_field_type type)
+{
+	pbg_field field;
+	field._type = type;
+	field._int = 0;
+	field._data = NULL;
 	return field;
 }
 

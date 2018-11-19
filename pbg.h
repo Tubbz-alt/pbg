@@ -166,18 +166,6 @@ int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_field (*dict)(char*, int));
 pbg_field pbg_make_field(pbg_field_type type);
 
 /**
- * Makes a field representing a VAR. Attempts to parse the given string as a 
- * VAR. If an error occurs during conversion, then err will be initialized with
- * the relevant error, if it is not NULL.
- * @param err  Used to store error, if any.
- * @param str  String to parse as a VAR.
- * @param n    Length of str.
- * @return a new field with the PBG_LT_VAR type if successful,
- *         a field with the PBG_NULL type otherwise.
- */
-pbg_field pbg_make_var(pbg_error* err, char* str, int n);
-
-/**
  * Makes a field representing a DATE. Attempts to parse the given string as a
  * DATE. If an error occurs during conversion, then err will be initialized with
  * the relevant error, if it is not NULL.
