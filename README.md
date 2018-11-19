@@ -1,5 +1,5 @@
 # pbg
-(Prefix Boolean Grammar) A simple grammar for writing boolean expressions implemented in a small, portable C library.
+A simple grammar for writing boolean expressions implemented in a small, portable C library.
 
 [about](#about) | [example](#example) | [design goals](#design-goals) | [formal definition](#formal-definition) | [API](#API)
 
@@ -20,7 +20,7 @@ PBG is designed to be used as a module within [**tbd**, the Tiny Boolean DBMS](h
 ## example
 
 The below example is found in `test/example.c`. It evaluates the expression `(&(=[a][b])(?[d]))` with `[a]=[b]=5.0` and `[c]=6.0`. 
-```
+```C
 #include "../pbg.h"
 #include <stdio.h>
 #include <string.h>
@@ -70,7 +70,7 @@ pbg_field dictionary(char* key, int n)
 	return pbg_make_field(PBG_UNKNOWN);
 }
 ```
-The output is `FALSE` because `(?[d])` asks if the key `[d]` is defined in the dictionary, which it is not. The expression `(&(=[a][b])(?[d]))` is `TRUE`, however, because `(=[a][b])` asks if `[a]` and `[b]` are equal, which they are.
+The output is `FALSE` because `(?[d])` asks if the key `[d]` is defined in the dictionary, which it is not. The expression `(|(=[a][b])(?[d]))` is `TRUE`, however, because `(=[a][b])` asks if `[a]` and `[b]` are equal, which they are.
 
 
 ## design goals
@@ -133,35 +133,61 @@ Given a string `S` generated using the [set of rules `R`](#rules), the library c
 
 ### functions
 
-#### void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
-Parse the string as a PBG expression. If a compilation error occurs, initialize the provided error argument accordingly.
+```C
+/* Parse the string as a PBG expression. If a compilation error occurs, initialize 
+ * the provided error argument accordingly. */
+void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
+```
 
-#### void pbg_free(pbg_expr* e)
-Destroy the PBG expression instance, and free all associated resources. If `pbg_parse` succeeds, this function must be called to free up internal resources.
+```C
+/* Destroy the PBG expression instance, and free all associated resources. If 
+ *`pbg_parse` succeeds, this function must be called to free up internal resources. */
+void pbg_free(pbg_expr* e)
+```
 
-#### int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_expr_node (*dict)(char*, int))
-Evaluate the PBG expression with the provided dictionary. If a runtime error occurs, initialize the provided error argument accordingly.
+```C
+/* Evaluate the PBG expression with the provided dictionary. If a runtime error 
+ * occurs, initialize the provided error argument accordingly. */
+int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_expr_node (*dict)(char*, int))
+```
 
-#### pbg_field pbg_make_field(pbg_field_type type)
-Make a `pbg_field` representing the given type. Initialize everything other than the type to zero. This is useful for creating a `TRUE`, `FALSE`, or `UNKNOWN` field.
+```C
+/* Make a `pbg_field` representing the given type. Initialize everything other than 
+ * the type to zero. This is useful for creating a `TRUE`, `FALSE`, or `UNKNOWN` field. */
+pbg_field pbg_make_field(pbg_field_type type)
+```
 
-#### pbg_field pbg_make_key(pbg_error* err, char* str, int n)
-Parse `str` as a `KEY` literal, and return a `pbg_field` representing it.
+```C
+/* Parse `str` as a `KEY` literal, and return a `pbg_field` representing it. */
+pbg_field pbg_make_key(pbg_error* err, char* str, int n)
+```
 
-#### pbg_field pbg_make_date(pbg_error* err, char* str, int n)
-Parse `str` as a `DATE` literal, and return a `pbg_field` representing it.
+```C
+/* Parse `str` as a `DATE` literal, and return a `pbg_field` representing it. */
+pbg_field pbg_make_date(pbg_error* err, char* str, int n)
+```
 
-#### pbg_field pbg_make_number(pbg_error* err, char* str, int n)
-Parse `str` as a `NUMBER` literal, and return a `pbg_field` representing it.
+```C
+/* Parse `str` as a `NUMBER` literal, and return a `pbg_field` representing it. */
+pbg_field pbg_make_number(pbg_error* err, char* str, int n)
+```
 
-#### pbg_field pbg_make_string(pbg_error* err, char* str, int n)
-Parse `str` as a `STRING` literal, and return a `pbg_field` representing it.
+```C
+/* Parse `str` as a `STRING` literal, and return a `pbg_field` representing it. */
+pbg_field pbg_make_string(pbg_error* err, char* str, int n)
+```
 
-#### pbg_node_type pbg_gettype(char* str, int n)
-Identifies the PBG expression type of the given string.
+```C
+/* Identifies the PBG expression type of the given string. */
+pbg_node_type pbg_gettype(char* str, int n)
+```
 
-#### void pbg_error_print(pbg_error* err)
-Prints a human-readable representation of the given error.
+```C
+/* Prints a human-readable representation of the given error. */
+void pbg_error_print(pbg_error* err)
+```
 
-#### void pbg_error_free(pbg_error* e)
-Frees resources being used by the given error, if any.
+```C
+/* Frees resources being used by the given error, if any. */
+void pbg_error_free(pbg_error* e)
+```
