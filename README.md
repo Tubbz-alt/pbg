@@ -86,87 +86,7 @@ Third, it must be **expressive**. Thoughts should be easily translated into conc
 
 ## formal definition
 
-A PBG expression is represented by an abstract syntax tree (AST).
-
-Each node in the tree is represented by a **field**. A field can be either an **operator** or a **literal**. Operators are always internal nodes of the AST; fields, always leaves.
-
-Each field has a **type**. The type of an operator determines its function as well as the types and multiplicity of its children (read: arguments) it can have. The type of a literal determines how the data within the field is interpreted and which operators it can be an argument of.
-
-### literals
-
-Literals are typed. The following types are supported: `DATE`, `BOOL`, `NUMBER`, `STRING`, and `NULL`. 
-
-##### DATE
-
-A `DATE` literal represents a day in the Gregorian calendar and is formatted as `YYYY-MM-DD`. So `2018-10-12` is `October 12, 2018`.
-
-##### BOOL
-
-A `BOOL` literal can be either `TRUE` or `FALSE`.
-
-##### NUMBER
-
-A `NUMBER` literal represents a floating point number and is formatted in the same way a [*JSON* number](http://json.org/). So `3`, `3.14`, `314e-2`, `0.314`, and `0.0` are all valid `NUMBER` literals, but `.314`, `0.`, and `1e` are not.
-
-##### STRING
-
-A `STRING` literal represents text, i.e. a string of characters, and is formatted using single quotes. So `'Hello pbg!'` is a `STRING`, and `''` is the empty `STRING`. To represent a single quote within a `STRING`, it must be escaped: `'I said, \'hi\' before I left.'`.
-
-##### NULL
-
-A `NULL` literal represents... nothing. It is written as `NULL`. If a variable is not defined, it is considered `NULL`.
-
-### opertions
-
-**pbg** supports a small set of essential operations. Every operation should be thought of as a function that accepts arguments of various types and returns a `BOOL`.
-
-##### NOT
-
-The `NOT` operator is written as `!`. It takes a single input of type `BOOL` and inverts it. This is a standard boolean operation.
-
-##### AND
-
-The `AND` operator is written as `&`. It takes two or more inputs of type `BOOL` and returns the boolean and of them. So it returns `TRUE` only if every argument is `TRUE`.
-
-##### OR
-
-The `OR` operator is written as `|`. It takes two or more inputs of type `BOOL` and returns the boolean or of them. So it returns `TRUE` only if at least one of its arguments is `TRUE`.
-
-##### EQ
-
-The `EQ` operator is written as `=`. It takes two or more inputs of any type and returns `TRUE` only if all arguments have equal values.
-
-##### NEQ
-
-The `NEQ` operator is written as `!=`. It takes two inputs of any type and returns `TRUE` only if its arguments are different.
-
-##### LT
-
-The `LT` operator is written as `<`. It takes two inputs of any type and returns `TRUE` only if the first argument is less than the second.
-
-##### GT
-
-The `GT` operator is written as `>`. It takes two inputs of any type and returns `TRUE` only if the first argument is greater than the second.
-
-##### LTE
-
-The `LTE` operator is written as `<=`. It takes two inputs of any type and returns `TRUE` only if the first argument is less than or equal to the second.
-
-##### GTE
-
-The `GTE` operator is written as `>=`. It takes two inputs of any type and returns `TRUE` only if the first argument is greater than or equal to the second.
-
-##### EXST
-
-The `EXST` operator is written as `?`. It takes one input of any type including `NULL` and returns `TRUE` only if it its argument is not `NULL`. `EXST` is useful for checking if a variable is defined.
-
-##### TYPE
-
-The `TYPE` operator is written as `@`. Its first argument is a type literal, and every argument thereafter may be of any type including `NULL`. It returns `TRUE` only if every argument after the first has the type specified by the first. For example, `(@ NUMBER 3.14 'hi' 17)` returns `FALSE` because `'hi'` is not a `NUMBER` even though `3.14` and `17` are. Notice that `(?[a])` and `(@ NULL [a])` have the same truth table.
-
-
-### the grammar
-The following is the grammar generates expression strings in **pgb**:
+The following grammar generates strings in **pbg**. We call these **PBG expressions**. The following is the grammar that can be used to generate expression strings in **pgb**:
 ```
 EXPR
   = (! BOOL)
@@ -194,14 +114,124 @@ BOOL
   = FALSE
 ```
 
+This grammar is defined recursively, so a PBG expression can be elegantly represented by an abstract syntax tree (AST).
+
+Each node in the tree is represented by a **field**. A field can be either an **operator** or a **literal**. Operators are always internal nodes of the AST; literals, always leaves.
+
+Each field has a **type**. The type of an operator determines its function as well as the types and multiplicity of its children (read: inputs). The type of a literal determines how the data within the field is interpreted and which operators it can be an argument of.
+
+### literals
+
+Literals are typed. The following types are supported: `DATE`, `BOOL`, `NUMBER`, `STRING`, and `NULL`. In addition to these, there exist meta-literals called **type literals**. These are used by the type check operator and are not listed here.
+
+##### DATE
+
+A `DATE` literal represents a day in the Gregorian calendar and is formatted as `YYYY-MM-DD`. So `2018-10-12` is `October 12, 2018`.
+
+##### BOOL
+
+A `BOOL` literal can be either `TRUE` or `FALSE`.
+
+##### NUMBER
+
+A `NUMBER` literal represents a floating point number and is formatted in the same way a [*JSON* number](http://json.org/). So `3`, `3.14`, `314e-2`, `0.314`, and `0.0` are all valid `NUMBER` literals, but `.314`, `0.`, and `1e` are not.
+
+##### STRING
+
+A `STRING` literal represents text, i.e. a string of characters, and is formatted using single quotes. So `'Hello pbg!'` is a `STRING`, and `''` is the empty `STRING`. To represent a single quote within a `STRING`, it must be escaped: `'I said, \'hi\' before I left.'`.
+
+##### NULL
+
+A `NULL` literal represents... nothing. It is written as `NULL`. If a variable is not defined, it is considered `NULL`.
+
+### opertions
+
+**pbg** supports a conservative set of essential operations. Every operation should be thought of as a function that accepts inputs of various types and returns a `BOOL`.
+
+##### NOT `(! BOOL)`
+
+The boolean not operator, abbreviated `NOT`. Take a single input of type `BOOL`. Return the inverse of its input.
++ `(! TRUE)` is `FALSE`
++ `(! FALSE)` is `TRUE`
+
+##### AND `(& BOOL BOOL ...)`
+
+The boolean and operator, abbreviated `AND`. Take two or more inputs of type `BOOL`. Return `TRUE` only if every input is `TRUE`.
++ `(& TRUE FALSE)` is `FALSE`
++ `(& TRUE TRUE TRUE)` is `TRUE`
+
+##### OR `(| BOOL BOOL ...)`
+
+The boolean or operator, abbreviated `OR`. Take two or more inputs of type `BOOL`. Return `FALSE` only if every input is `FALSE`.
++ `(| FALSE TRUE FALSE)` is `TRUE`
++ `(| FALSE FALSE)` is `FALSE`
+
+##### EQ `(= ANY ANY ...)`
+
+The equality operator, abbreviated `EQ`. Take two or more inputs of any type. Return `TRUE` only if all arguments have equal values.
++ `(= 3 'hi')` is `FALSE`
++ `(= 3 '3')'` is `FALSE`
++ `(= 3 3)` is `TRUE`
+
+##### NEQ `(!= ANY ANY)`
+
+The not equal operator, abbreviated `NEQ`. Take two inputs of any type. Return `TRUE` only if its arguments are different.
++ `(!= 3 'hi')` is `TRUE`
++ `(!= 3 '3')'` is `TRUE`
++ `(!= 3 3)` is `FALSE`
+
+##### LT `(< ANY ANY)`
+
+The less than operator, abbreviated `LT`. Take two inputs of any type. Return `TRUE` only if the first argument is less than the second.
++ `(< 'aa' 'ab')` is `TRUE`
++ `(< 2018-10-12 2018-10-11)` is `TRUE`
++ `(< 5 2)` is `FALSE`
+
+##### GT `(> ANY ANY)`
+
+The greater than operator, abbreviated `GT`. Take two inputs of any type. Return `TRUE` only if the first argument is greater than the second.
++ `(> 'aa' 'ab')` is `FALSE`
++ `(> 2020-12-01 2019-12-01)` is `TRUE`
++ `(> 5 2)` is `TRUE`
+
+##### At Most `(<= ANY ANY)`
+
+The at most operator, abbreviated `LTE`. Take two inputs of any type. Return `TRUE` only if the first argument is less than or equal to the second.
++ `(<= 'aa' 'aa')` is `TRUE`
++ `(<= 2020-12-01 2019-12-01)` is `FALSE`
++ `(<= 5 6)` is `TRUE`
+
+##### At Least `(>= ANY ANY)`
+
+The at least operator, abbreviated `GTE`. Take two inputs of any type. Return `TRUE` only if the first argument is greater than or equal to the second.
++ `(>= 'aa' 'zz')` is `FALSE`
++ `(>= 2020-12-01 2019-12-01)` is `TRUE`
++ `(>= 7 7)` is `TRUE`
+
+##### Existence `(? ALL ...)`
+
+The existence operator, abbreviated `EXST`. Take one input of any type. Return `TRUE` only if it its argument is not `NULL`. `EXST` is useful for checking if a variable is defined.
++ `(? 5)` is `TRUE`
++ `(? 2018-10-12)` is `TRUE`
++ `(? NULL)` is `FALSE`
++ `(? [a])` is `TRUE` only if variable `a` is defined.
+
+##### Type Check `(@ TYPE ALL ...)`
+
+The type check operator is written as `@`. Take a `TYPE` name followed by at least one input. Return `TRUE` only if every argument after the first has the type specified by the first. 
++ Notice that `(?[a])` and `(@ NULL [a])` have the same truth table.
++ `(@ NUMBER 3.14 'hi' 17)` is `FALSE`, because `'hi'` is not a `NUMBER` even though `3.14` and `17` are. 
++ `(@ DATE 2018-10-12)` is `TRUE`, because `2018-10-12` is a `DATE` literal.
++ `(@ DATE '2018-10-12')` is `FALSE`, because `'2018-10-12'` is a `STRING` literal.
+
 
 ## API
 
-This repository provides a lightweight implementation of a PBG compiler. It can be incorporated into an existing project by including `pbg.h`. Documentation of each API function is provided in `pbg.h` but is partially reproduced here for visibility. The library reserves the `pbg_` and `PBG_` prefixes.
+This repository provides a lightweight implementation of a PBG compiler and evaluator. It can be incorporated into an existing project by including `pbg.h`. Documentation of each API function is provided in `pbg.h` but is partially reproduced here for visibility. The library reserves the `pbg_` and `PBG_` prefixes.
 
 ### literals & operators
 
-A literal type, as represented within the library, is the name of the type with the prefix 'PBG_'. So `NUMBER` is referred to as `PBG_NUMBER`. Operators are written using the abbreviations enumerated [above](#formal-definition).
+Both literal and operator types, as represented within the library, are enums with their type name prefixed by either `PBG_LT_` or `PBG_OP_`, respectively. So the `NUMBER` literal is referred to as `PBG_LT_NUMBER`, and the `OR` operator is referred to as `PBG_OP_OR`. Operators are named according to the abbreviations listed [above](#formal-defintiion).
 
 ### functions
 
