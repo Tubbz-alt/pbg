@@ -30,7 +30,7 @@ pbg_field dict(char* key, int n)
 {
 	PBG_UNUSED(n);
 	pbg_field keylt;
-	keylt._type = PBG_UNKNOWN;
+	keylt._type = PBG_NULL;
 	keylt._int = 0;
 	keylt._data = NULL;
 	if(key[0] == 'a' || key[0] == 'b') {
@@ -281,53 +281,53 @@ int suite_gettype()
 	check(test_gettype("!=", PBG_OP_NEQ));
 	check(test_gettype("<=", PBG_OP_LTE));
 	check(test_gettype(">=", PBG_OP_GTE));
-	check(test_gettype("!!", PBG_UNKNOWN));
-	check(test_gettype("&&", PBG_UNKNOWN));
-	check(test_gettype("||", PBG_UNKNOWN));
-	check(test_gettype("==", PBG_UNKNOWN));
-	check(test_gettype("<<", PBG_UNKNOWN));
-	check(test_gettype(">>", PBG_UNKNOWN));
-	check(test_gettype("??", PBG_UNKNOWN));
-	check(test_gettype("!==", PBG_UNKNOWN));
-	check(test_gettype("<==", PBG_UNKNOWN));
-	check(test_gettype(">==", PBG_UNKNOWN));
+	check(test_gettype("!!", PBG_NULL));
+	check(test_gettype("&&", PBG_NULL));
+	check(test_gettype("||", PBG_NULL));
+	check(test_gettype("==", PBG_NULL));
+	check(test_gettype("<<", PBG_NULL));
+	check(test_gettype(">>", PBG_NULL));
+	check(test_gettype("??", PBG_NULL));
+	check(test_gettype("!==", PBG_NULL));
+	check(test_gettype("<==", PBG_NULL));
+	check(test_gettype(">==", PBG_NULL));
 	/* pbg_istrue */
 	check(test_gettype("TRUE", PBG_LT_TRUE));
-	check(test_gettype(" TRUE", PBG_UNKNOWN));
-	check(test_gettype(" TRUE ", PBG_UNKNOWN));
-	check(test_gettype(" TR UE ", PBG_UNKNOWN));
-	check(test_gettype("true", PBG_UNKNOWN));
-	check(test_gettype("tRue", PBG_UNKNOWN));
+	check(test_gettype(" TRUE", PBG_NULL));
+	check(test_gettype(" TRUE ", PBG_NULL));
+	check(test_gettype(" TR UE ", PBG_NULL));
+	check(test_gettype("true", PBG_NULL));
+	check(test_gettype("tRue", PBG_NULL));
 	/* pbg_isfalse */
 	check(test_gettype("FALSE", PBG_LT_FALSE));
-	check(test_gettype(" FALSE", PBG_UNKNOWN));
-	check(test_gettype(" FALSE ", PBG_UNKNOWN));
-	check(test_gettype(" FAL SE ", PBG_UNKNOWN));
-	check(test_gettype("false", PBG_UNKNOWN));
-	check(test_gettype("fAlse", PBG_UNKNOWN));
+	check(test_gettype(" FALSE", PBG_NULL));
+	check(test_gettype(" FALSE ", PBG_NULL));
+	check(test_gettype(" FAL SE ", PBG_NULL));
+	check(test_gettype("false", PBG_NULL));
+	check(test_gettype("fAlse", PBG_NULL));
 	/* pbg_isnumber */
 	check(test_gettype("3.14e1", PBG_LT_NUMBER));
 	check(test_gettype("3", PBG_LT_NUMBER));
-	check(test_gettype("03", PBG_UNKNOWN));
-	check(test_gettype("3.", PBG_UNKNOWN));
+	check(test_gettype("03", PBG_NULL));
+	check(test_gettype("3.", PBG_NULL));
 	check(test_gettype("3.0", PBG_LT_NUMBER));
-	check(test_gettype(".", PBG_UNKNOWN));
+	check(test_gettype(".", PBG_NULL));
 	check(test_gettype("0", PBG_LT_NUMBER));
-	check(test_gettype("0.123a45", PBG_UNKNOWN));
-	check(test_gettype("0.0.1", PBG_UNKNOWN));
+	check(test_gettype("0.123a45", PBG_NULL));
+	check(test_gettype("0.0.1", PBG_NULL));
 	check(test_gettype("0.0", PBG_LT_NUMBER));
-	check(test_gettype("e10", PBG_UNKNOWN));
-	check(test_gettype(".0", PBG_UNKNOWN));
+	check(test_gettype("e10", PBG_NULL));
+	check(test_gettype(".0", PBG_NULL));
 	check(test_gettype("0e10", PBG_LT_NUMBER));
-	check(test_gettype("0e", PBG_UNKNOWN));
+	check(test_gettype("0e", PBG_NULL));
 	/* pbg_isstring */
 	check(test_gettype("'hi'", PBG_LT_STRING));
 	check(test_gettype("''", PBG_LT_STRING));
 	check(test_gettype("','", PBG_LT_STRING));
 	check(test_gettype("'\''", PBG_LT_STRING));
-	check(test_gettype("'unclosed", PBG_UNKNOWN));
-	check(test_gettype("unclosed'", PBG_UNKNOWN));
-	check(test_gettype("noquotes", PBG_UNKNOWN));
+	check(test_gettype("'unclosed", PBG_NULL));
+	check(test_gettype("unclosed'", PBG_NULL));
+	check(test_gettype("noquotes", PBG_NULL));
 	check(test_gettype("'ab\\'d'", PBG_LT_STRING));
 	
 	end_test();

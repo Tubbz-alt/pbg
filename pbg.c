@@ -12,15 +12,15 @@
 /* LITERAL REPRESENTATIONS */
 typedef struct {
 	double _val;
-} pbg_number_lt;  /* PBG_LT_NUMBER */
+} pbg_lt_number;  /* PBG_LT_NUMBER */
 
 typedef struct {
 	unsigned int  _YYYY;  /* year */
 	unsigned int  _MM;    /* month */
 	unsigned int  _DD;    /* day */
-} pbg_date_lt;  /* PBG_LT_DATE */
+} pbg_lt_date;  /* PBG_LT_DATE */
 
-typedef char pbg_string_lt; /* PBG_LT_STRING */
+typedef char pbg_lt_string; /* PBG_LT_STRING */
 
 /* ERROR REPRESENTATIONS */
 typedef struct {
@@ -53,17 +53,18 @@ void pbg_err_op_arity(pbg_error* err, int line, char* file, pbg_field_type type,
 void pbg_err_state(pbg_error* err, int line, char* file, char* msg);
 void pbg_err_op_arg_type(pbg_error* err, int line, char* file);
 
-char* pbg_type_str(pbg_field_type type);
+char* pbg_field_type_str(pbg_field_type type);
 char* pbg_error_str(pbg_error_type type);
 
 /* FIELD CREATION TOOLKIT */
 pbg_field pbg_make_op(pbg_error* err, pbg_field_type type, int numchildren);
-int pbg_store_static(pbg_expr* e, pbg_field field);
-int pbg_store_dynamic(pbg_expr* e, pbg_field field);
+int pbg_store_constant(pbg_expr* e, pbg_field field);
+int pbg_store_variable(pbg_expr* e, pbg_field field);
 
 /* FIELD PARSING TOOLKIT */
 int pbg_check_op_arity(pbg_field_type type, int numargs);
-int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str, int** fields, int** lengths, int** closings);
+int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str, 
+		int** fields, int** lengths, int** closings);
 
 /* FIELD EVALUATION TOOLKIT */
 int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_field* field);
@@ -81,7 +82,6 @@ int pbg_evaluate_op_typeof(pbg_expr* e, pbg_error* err, pbg_field* field);
 
 /* JANITORIAL FUNCTIONS */
 void pbg_error_init(pbg_error* err);
-// No local functions.
 
 /* CONVERSION & CHECKING TOOLKIT */
 int pbg_istypedate(char* str, int n);
@@ -90,17 +90,17 @@ int pbg_istypebool(char* str, int n);
 int pbg_istypestring(char* str, int n);
 int pbg_istrue(char* str, int n);
 int pbg_isfalse(char* str, int n);
-int pbg_iskey(char* str, int n);
+int pbg_isvar(char* str, int n);
 int pbg_isnumber(char* str, int n);
 int pbg_isstring(char* str, int n);
 int pbg_isdate(char* str, int n);
 
-void pbg_tonumber(pbg_number_lt* ptr, char* str, int n);
-void pbg_todate(pbg_date_lt* ptr, char* str, int n);
+void pbg_tonumber(pbg_lt_number* ptr, char* str, int n);
+void pbg_todate(pbg_lt_date* ptr, char* str, int n);
 
-int pbg_cmpnumber(pbg_number_lt* n1, pbg_number_lt* n2);
-int pbg_cmpdate(pbg_date_lt* d1, pbg_date_lt* d2);
-int pbg_cmpstring(pbg_string_lt* s1, pbg_string_lt* s2, int n);
+int pbg_cmpnumber(pbg_lt_number* n1, pbg_lt_number* n2);
+int pbg_cmpdate(pbg_lt_date* d1, pbg_lt_date* d2);
+int pbg_cmpstring(pbg_lt_string* s1, pbg_lt_string* s2, int n);
 
 /* HELPER FUNCTIONS */
 int pbg_isdigit(char c);
@@ -114,8 +114,8 @@ int pbg_iswhitespace(char c);
  ********************/
 
 /**
- * This function returns the field identified by the given index. Static fields
- * are identified by positive indices starting at 1. Dynamic fields are
+ * This function returns the field identified by the given index. Constant fields
+ * are identified by positive indices starting at 1. Variable fields are
  * identified by negative indices starting at -1.
  * @param e      PBG expression to get field from.
  * @param index  Index of the field to get.
@@ -124,8 +124,8 @@ int pbg_iswhitespace(char c);
  */
 pbg_field* pbg_field_get(pbg_expr* e, int index)
 {
-	if(index < 0) return e->_dynamic - (index+1);
-	if(index > 0) return e->_static + (index-1);
+	if(index < 0) return e->_variables - (index+1);
+	if(index > 0) return e->_constants + (index-1);
 	return NULL;
 }
 
@@ -160,7 +160,7 @@ void pbg_error_print(pbg_error* err)
 		case PBG_ERR_OP_ARITY:
 			arity = (pbg_op_arity_err*) err->_data;
 			printf(": operator %s cannot take %d arguments!", 
-					pbg_type_str(arity->_type), arity->_arity);
+					pbg_field_type_str(arity->_type), arity->_arity);
 			break;
 		case PBG_ERR_SYNTAX:
 			syntax = (pbg_syntax_err*) err->_data;
@@ -279,10 +279,10 @@ pbg_field pbg_make_field(pbg_field_type type)
 	return field;
 }
 
-pbg_field pbg_make_key(pbg_error* err, char* str, int n)
+pbg_field pbg_make_var(pbg_error* err, char* str, int n)
 {
-	pbg_field field = pbg_make_field(PBG_UNKNOWN);
-	field._type = PBG_LT_KEY;
+	pbg_field field = pbg_make_field(PBG_NULL);
+	field._type = PBG_LT_VAR;
 	field._int = (n-2) * sizeof(char);
 	field._data = malloc(field._int);
 	if(field._data == NULL) {
@@ -294,35 +294,35 @@ pbg_field pbg_make_key(pbg_error* err, char* str, int n)
 
 pbg_field pbg_make_date(pbg_error* err, char* str, int n)
 {
-	pbg_field field = pbg_make_field(PBG_UNKNOWN);
+	pbg_field field = pbg_make_field(PBG_NULL);
 	field._type = PBG_LT_DATE;
-	field._int = sizeof(pbg_date_lt);
+	field._int = sizeof(pbg_lt_date);
 	field._data = malloc(field._int);
 	if(field._data == NULL) {
 		if(err != NULL) pbg_err_alloc(err, __LINE__, __FILE__);
 	}else
-		pbg_todate((pbg_date_lt*)field._data, str, n);
+		pbg_todate((pbg_lt_date*)field._data, str, n);
 	return field;
 }
 
 pbg_field pbg_make_number(pbg_error* err, char* str, int n)
 {
-	pbg_field field = pbg_make_field(PBG_UNKNOWN);
+	pbg_field field = pbg_make_field(PBG_NULL);
 	field._type = PBG_LT_NUMBER;
-	field._int = sizeof(pbg_number_lt);
+	field._int = sizeof(pbg_lt_number);
 	field._data = malloc(field._int);
 	if(field._data == NULL) {
 		if(err != NULL) pbg_err_alloc(err, __LINE__, __FILE__);
 	}else
-		pbg_tonumber((pbg_number_lt*)field._data, str, n);
+		pbg_tonumber((pbg_lt_number*)field._data, str, n);
 	return field;
 }
 
 pbg_field pbg_make_string(pbg_error* err, char* str, int n)
 {
-	pbg_field field = pbg_make_field(PBG_UNKNOWN);
+	pbg_field field = pbg_make_field(PBG_NULL);
 	field._type = PBG_LT_STRING;
-	field._int = (n-2) * sizeof(pbg_string_lt);
+	field._int = (n-2) * sizeof(pbg_lt_string);
 	field._data = malloc(field._int);
 	if(field._data == NULL) {
 		if(err != NULL) pbg_err_alloc(err, __LINE__, __FILE__);
@@ -332,33 +332,33 @@ pbg_field pbg_make_string(pbg_error* err, char* str, int n)
 }
 
 /**
- * This function stores the given static field in the AST. Static fields are
+ * This function stores the given constant field in the AST. Constant fields are
  * indexed using positive values starting at 1.
  * @param e     Abstract expression tree to store field in.
  * @param field  Field to store.
  * @return a positive index if successful,
  *         0 otherwise.
  */
-int pbg_store_static(pbg_expr* e, pbg_field field)
+int pbg_store_constant(pbg_expr* e, pbg_field field)
 {
-	if(field._type == PBG_UNKNOWN)
+	if(field._type == PBG_NULL)
 		return 0;
-	int fieldi = 1 + e->_staticsz++;
+	int fieldi = 1 + e->_numconst++;
 	*pbg_field_get(e, fieldi) = field;
 	return fieldi;
 }
 
 /**
- * This function stores the given dynamic field in the AST. Dynamic fields are
+ * This function stores the given variable field in the AST. Variable fields are
  * indexed using negative values starting at -1.
  * @param e     Abstract expression tree to store field in.
  * @param field  Field to store.
  * @return a negative index if successful,
  *         0 otherwise.
  */
-int pbg_store_dynamic(pbg_expr* e, pbg_field field)
+int pbg_store_variable(pbg_expr* e, pbg_field field)
 {
-	int fieldi = -(1 + e->_dynamicsz++);
+	int fieldi = -(1 + e->_numvars++);
 	*pbg_field_get(e, fieldi) = field;
 	return fieldi;
 }
@@ -423,7 +423,7 @@ int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str,
 	
 	/* Identify type of field. If the type cannot be resolve, throw an error. */
 	pbg_field_type type = pbg_gettype(str + strfieldstart, n);
-	if(type == PBG_UNKNOWN) {
+	if(type == PBG_NULL) {
 		pbg_err_unknown_type(err, __LINE__, __FILE__);
 		return 0;
 	}
@@ -435,7 +435,7 @@ int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str,
 		/* Maximum number of children this field has allocated space for. */
 		int maxc = 2;
 		/* Initialize field and record field index. */
-		fieldi = pbg_store_static(e, pbg_make_op(err, type, maxc));
+		fieldi = pbg_store_constant(e, pbg_make_op(err, type, maxc));
 		field = pbg_field_get(e, fieldi);
 		/* Propagate error back to caller, if any. */
 		if(fieldi == 0) return 0;
@@ -451,7 +451,7 @@ int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str,
 			/* Expand array of children if necessary. */
 			if(field->_int == maxc) {
 				maxc *= 2;  // doubling gives amortized O(1) time insertion
-				int* children = (int*) realloc(field->_data, maxc * sizeof(int));
+				int* children = (int*)realloc(field->_data, maxc * sizeof(int));
 				if(children == NULL) {
 					pbg_err_alloc(err, __LINE__, __FILE__);
 					return 0;
@@ -487,17 +487,17 @@ int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str,
 		str += strfieldstart;
 		/* Identify type of literal and initialize the field! */
 		switch(type) {
-			case PBG_LT_KEY:
-				fieldi = pbg_store_dynamic(e, pbg_make_key(err, str, n));
+			case PBG_LT_VAR:
+				fieldi = pbg_store_variable(e, pbg_make_var(err, str, n));
 				break;
 			case PBG_LT_DATE:
-				fieldi = pbg_store_static(e, pbg_make_date(err, str, n));
+				fieldi = pbg_store_constant(e, pbg_make_date(err, str, n));
 				break;
 			case PBG_LT_NUMBER:
-				fieldi = pbg_store_static(e, pbg_make_number(err, str, n));
+				fieldi = pbg_store_constant(e, pbg_make_number(err, str, n));
 				break;
 			case PBG_LT_STRING:
-				fieldi = pbg_store_static(e, pbg_make_string(err, str, n));
+				fieldi = pbg_store_constant(e, pbg_make_string(err, str, n));
 				break;
 			case PBG_LT_TRUE:
 			case PBG_LT_FALSE:
@@ -505,7 +505,7 @@ int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str,
 			case PBG_LT_TP_BOOL:
 			case PBG_LT_TP_NUMBER:
 			case PBG_LT_TP_STRING:
-				fieldi = pbg_store_static(e, pbg_make_field(type));
+				fieldi = pbg_store_constant(e, pbg_make_field(type));
 				break;
 			default:
 				pbg_err_unknown_type(err, __LINE__, __FILE__);
@@ -523,27 +523,27 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 	pbg_error_init(err);
 	
 	/* Set to NULL to allow for pbg_free to check if needing free. */
-	e->_static = NULL;
-	e->_dynamic = NULL;
+	e->_constants = NULL;
+	e->_variables = NULL;
 	
 	/* These are initialized to 0 as they are used as counters for the number 
 	 * of each type of field created. In the end they should be equal to the 
 	 * associated local variables here. */
-	e->_staticsz = 0;
-	e->_dynamicsz = 0;
+	e->_numconst = 0;
+	e->_numvars = 0;
 	
-	/* Verify that all strings & keys are bounded, that all opening parentheses
-	 * have friends, and that only a single expression is present. Also count 
-	 * the number of fields, keys, and closings. */
+	/* Verify that all strings & variable names are bounded, that all opening 
+	 * parentheses have friends, and that only a single expression is present. 
+	 * Also count the number of fields, variables, and closings. */
 	int numfields = 0;
-	int numkeys = 0;
+	int numvars = 0;
 	int numclosings = 0;
 	int depth = 0, reachedend = 0;
-	int instring = 0, inkey = 0;
+	int instring = 0, invar = 0;
 	for(int i = 0; i < n; i++) {
 		if(pbg_iswhitespace(str[i])) continue;
-		/* Count number of keys. */
-		if(str[i] == '[') numkeys++;
+		/* Count number of variables. */
+		if(str[i] == '[') numvars++;
 		/* It's an open! Delve deeper into the tree. */
 		if(str[i] == '(') depth++;
 		/* It's a close! Rise up in the tree. */
@@ -572,11 +572,11 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 				do i++; while(i != n && !(str[i] == '\'' && str[i-1] != '\\'));
 				if(i != n) instring = 0;
 			}
-			/* It's a key! */
+			/* It's a variable! */
 			else if(str[i] == '[') {
-				inkey = 1;
+				invar = 1;
 				do i++; while(!(str[i] == ']' && str[i-1] != '\\'));
-				if(i != n) inkey = 0;
+				if(i != n) invar = 0;
 			}
 			/* It's literally anything else! */
 			else
@@ -591,10 +591,10 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 				"Unclosed string.");
 		return;
 	}
-	/* Check if key is left unclosed. */
-	if(inkey) {
-		pbg_err_syntax(err, __LINE__, __FILE__, str, inkey, 
-				"Unclosed key.");
+	/* Check if variable is left unclosed. */
+	if(invar) {
+		pbg_err_syntax(err, __LINE__, __FILE__, str, invar, 
+				"Unclosed variable.");
 		return;
 	}
 	/* Check if there are any parentheses at all . */
@@ -610,9 +610,9 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 		return;
 	}
 	
-	/* Compute sizes of static and dynamic arrays. */
-	int numstatic = numfields - numkeys;
-	int numdynamic = numkeys;
+	/* Compute sizes of constant and variable arrays. */
+	int numconstant = numfields - numvars;
+	int numvariable = numvars;
 	
 	/* Allocate space for needed arrays. */
 	int* fields = (int*) malloc((numfields+1) * sizeof(int));
@@ -646,7 +646,7 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 			/* It's a string! */
 			if(str[i] == '\'') {
 				do i++; while(!(str[i] == '\'' && str[i-1] != '\\'));
-			/* It's a key! */
+			/* It's a variable! */
 			}else if(str[i] == '[')
 				do i++; while(!(str[i] == ']' && str[i-1] != '\\'));
 			/* It's literally anything else! */
@@ -662,16 +662,16 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 	 * in pbg_parse_r. */
 	fields[numfields] = -1;
 	
-	/* Allocate space for static and dynamic field arrays. */
-	e->_static = (pbg_field*) malloc(numstatic * sizeof(pbg_field));
-	if(e->_static == NULL) {
+	/* Allocate space for constant and variable field arrays. */
+	e->_constants = (pbg_field*) malloc(numconstant * sizeof(pbg_field));
+	if(e->_constants == NULL) {
 		free(fields), free(lengths), free(closings);
 		pbg_err_alloc(err, __LINE__, __FILE__);
 		return;
 	}
-	e->_dynamic = (pbg_field*) malloc(numdynamic * sizeof(pbg_field));
-	if(e->_dynamic == NULL) {
-		free(e->_static);
+	e->_variables = (pbg_field*) malloc(numvariable * sizeof(pbg_field));
+	if(e->_variables == NULL) {
+		free(e->_constants);
 		free(fields), free(lengths), free(closings);
 		pbg_err_alloc(err, __LINE__, __FILE__);
 		return;
@@ -679,7 +679,8 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 	
 	/* Recursively parse the expression string to build the expression tree. */
 	int* lengths_cpy = lengths, *closings_cpy = closings, *fields_cpy = fields;
-	int status = pbg_parse_r(e, err, str, &fields_cpy, &lengths_cpy, &closings_cpy);
+	int status = pbg_parse_r(e, err, str, &fields_cpy, 
+			&lengths_cpy, &closings_cpy);
 	
 	/* If an error occurred, clean up. */
 	if(status == 0) pbg_free(e);
@@ -692,7 +693,7 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 		return;
 	
 	/* Sanity check: verify we parsed everything we expected. */
-	if(e->_staticsz != numstatic || e->_dynamicsz != numdynamic) {
+	if(e->_numconst != numconstant || e->_numvars != numvariable) {
 		pbg_err_state(err, __LINE__, __FILE__,
 				"Not all fields were parsed?");
 		return;
@@ -743,7 +744,7 @@ int pbg_evaluate_op_exst(pbg_expr* e, pbg_error* err, pbg_field* field)
 	PBG_UNUSED(err);
 	int child0 = ((int*)field->_data)[0];
 	pbg_field* c0 = pbg_field_get(e, child0);
-	return c0->_type != PBG_UNKNOWN;
+	return c0->_type != PBG_NULL;
 }
 
 int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_field* field)
@@ -931,13 +932,10 @@ int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_field* field)
 			case PBG_OP_LTE:  return pbg_evaluate_op_lte(e, err, field);
 			case PBG_OP_GTE:  return pbg_evaluate_op_gte(e, err, field);
 			case PBG_OP_TYPE: return pbg_evaluate_op_typeof(e, err, field);
-			default:
-				pbg_err_unknown_type(err, __LINE__, __FILE__);
-				return -1;
+			default: pbg_err_unknown_type(err, __LINE__, __FILE__);
 		}
+		return -1;
 	}
-	
-	
 }
 
 int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_field (*dict)(char*, int))
@@ -945,32 +943,32 @@ int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_field (*dict)(char*, int))
 	/* Always start with a clean error! */
 	pbg_error_init(err);
 	
-	/* KEY resolution. Lookup every key in provided dictionary. */
-	pbg_field* dynamics;
-	dynamics = (pbg_field*) malloc(e->_dynamicsz * sizeof(pbg_field));
-	if(dynamics == NULL) {
+	/* Variable resolution. Lookup every variable in provided dictionary. */
+	pbg_field* variables;
+	variables = (pbg_field*) malloc(e->_numvars * sizeof(pbg_field));
+	if(variables == NULL) {
 		pbg_err_alloc(err, __LINE__, __FILE__);
 		return -1;
 	}
-	for(int i = 0; i < e->_dynamicsz; i++) {
-		pbg_field* keylt = e->_dynamic+i;
-		dynamics[i] = dict((char*)(keylt->_data), keylt->_int);
+	for(int i = 0; i < e->_numvars; i++) {
+		pbg_field* var = e->_variables+i;
+		variables[i] = dict((char*)(var->_data), var->_int);
 	}
 	
-	/* Swap out KEY literals with dictionary equivalents. */
-	pbg_field* old = e->_dynamic;
-	e->_dynamic = dynamics;
+	/* Swap out variable literals with dictionary equivalents. */
+	pbg_field* old = e->_variables;
+	e->_variables = variables;
 	
 	/* Evaluate expression! */
-	int result = pbg_evaluate_r(e, err, e->_static);
+	int result = pbg_evaluate_r(e, err, e->_constants);
 	
-	/* Restore old KEY literal array. */
-	e->_dynamic = old;
+	/* Restore old variable literal array. */
+	e->_variables = old;
 	
 	/* Clean up malloc'd memory. */
-	for(int i = 0; i < e->_dynamicsz; i++)
-		pbg_field_free(dynamics+i);
-	free(dynamics);
+	for(int i = 0; i < e->_numvars; i++)
+		pbg_field_free(variables+i);
+	free(variables);
 	
 	/* Done! */
 	return result;
@@ -994,17 +992,17 @@ void pbg_error_init(pbg_error* err)
 
 void pbg_free(pbg_expr* e)
 {
-	/* Free individual static fields. Some do not have _data malloc'd. */
-	for(int i = e->_staticsz-1; i >= 0; i--)
-		pbg_field_free(e->_static+i);
+	/* Free individual constant fields. Some do not have _data malloc'd. */
+	for(int i = e->_numconst-1; i >= 0; i--)
+		pbg_field_free(e->_constants+i);
 	
-	/* Free individual dynamic fields. All have _data malloc'd. */
-	for(int i = 0; i < e->_dynamicsz; i++)
-		pbg_field_free(e->_dynamic+i);
+	/* Free individual variable fields. All have _data malloc'd. */
+	for(int i = 0; i < e->_numvars; i++)
+		pbg_field_free(e->_variables+i);
 	
 	/* Free internal field arrays. */
-	if(e->_static != NULL) free(e->_static);
-	if(e->_static != NULL) free(e->_dynamic);
+	if(e->_constants != NULL) free(e->_constants);
+	if(e->_variables != NULL) free(e->_variables);
 }
 
 
@@ -1019,7 +1017,7 @@ void pbg_free(pbg_expr* e)
  * @param type  PBG field type to translate.
  * @return String representation of the given field type.
  */
-char* pbg_type_str(pbg_field_type type)
+char* pbg_field_type_str(pbg_field_type type)
 {
 	switch(type) {
 		case PBG_LT_TRUE: return "PBG_LT_TRUE";
@@ -1027,7 +1025,7 @@ char* pbg_type_str(pbg_field_type type)
 		case PBG_LT_NUMBER: return "PBG_LT_NUMBER";
 		case PBG_LT_STRING: return "PBG_LT_STRING";
 		case PBG_LT_DATE: return "PBG_LT_DATE";
-		case PBG_LT_KEY: return "PBG_LT_KEY";
+		case PBG_LT_VAR: return "PBG_LT_VAR";
 		case PBG_OP_NOT: return "PBG_OP_NOT";
 		case PBG_OP_AND: return "PBG_OP_AND";
 		case PBG_OP_OR: return "PBG_OP_OR";
@@ -1038,7 +1036,11 @@ char* pbg_type_str(pbg_field_type type)
 		case PBG_OP_NEQ: return "PBG_OP_NEQ";
 		case PBG_OP_LTE: return "PBG_OP_LTE";
 		case PBG_OP_GTE: return "PBG_OP_GTE";
-		default: return "PBG_UNKNOWN";
+		case PBG_LT_TP_DATE: return "PBG_LT_TP_DATE";
+		case PBG_LT_TP_BOOL: return "PBG_LT_TP_BOOL";
+		case PBG_LT_TP_NUMBER: return "PBG_LT_TP_NUMBER";
+		case PBG_LT_TP_STRING: return "PBG_LT_TP_STRING";
+		default: return "PBG_NULL";
 	}
 }
 
@@ -1074,7 +1076,7 @@ pbg_field_type pbg_gettype(char* str, int n)
 	if(pbg_isnumber(str, n)) return PBG_LT_NUMBER;
 	if(pbg_isstring(str, n)) return PBG_LT_STRING;
 	if(pbg_isdate(str, n))   return PBG_LT_DATE;
-	if(pbg_iskey(str, n))    return PBG_LT_KEY;
+	if(pbg_isvar(str, n))    return PBG_LT_VAR;
 	if(pbg_istypedate(str, n))    return PBG_LT_TP_DATE;
 	if(pbg_istypebool(str, n))    return PBG_LT_TP_BOOL;
 	if(pbg_istypenumber(str, n))  return PBG_LT_TP_NUMBER;
@@ -1098,45 +1100,66 @@ pbg_field_type pbg_gettype(char* str, int n)
 	}
 	
 	/* It isn't anything! */
-	return PBG_UNKNOWN;
+	return PBG_NULL;
 }
 
 int pbg_istypedate(char* str, int n)
 {
 	return n == 4 && 
-		str[0]=='D' && str[1]=='A' && str[2]=='T' && str[3]=='E';
+		str[0]=='D' && 
+		str[1]=='A' && 
+		str[2]=='T' && 
+		str[3]=='E';
 }
 
 int pbg_istypenumber(char* str, int n)
 {
 	return n == 6 && 
-		str[0]=='N' && str[1]=='U' && str[2]=='M' && 
-		str[3]=='B' && str[4]=='E' && str[5]=='R';
+		str[0]=='N' && 
+		str[1]=='U' && 
+		str[2]=='M' && 
+		str[3]=='B' && 
+		str[4]=='E' && 
+		str[5]=='R';
 }
 
 int pbg_istypebool(char* str, int n)
 {
 	return n == 4 && 
-		str[0]=='B' && str[1]=='O' && str[2]=='O' && str[3]=='L';
+		str[0]=='B' && 
+		str[1]=='O' && 
+		str[2]=='O' && 
+		str[3]=='L';
 }
 
 int pbg_istypestring(char* str, int n)
 {
 	return n == 6 && 
-		str[0]=='S' && str[1]=='T' && str[2]=='R' && 
-		str[3]=='I' && str[4]=='N' && str[5]=='G';
+		str[0]=='S' && 
+		str[1]=='T' && 
+		str[2]=='R' && 
+		str[3]=='I' && 
+		str[4]=='N' && 
+		str[5]=='G';
 }
 
 int pbg_istrue(char* str, int n)
 {
 	return n == 4 && 
-		str[0]=='T' && str[1]=='R' && str[2]=='U' && str[3]=='E';
+		str[0]=='T' && 
+		str[1]=='R' && 
+		str[2]=='U' && 
+		str[3]=='E';
 }
 
 int pbg_isfalse(char* str, int n)
 {
 	return n == 5 && 
-		str[0]=='F' && str[1]=='A' && str[2]=='L' && str[3]=='S' && str[4]=='E';
+		str[0]=='F' && 
+		str[1]=='A' && 
+		str[2]=='L' && 
+		str[3]=='S' && 
+		str[4]=='E';
 }
 
 int pbg_isnumber(char* str, int n)
@@ -1181,20 +1204,20 @@ int pbg_isnumber(char* str, int n)
 	return 1;
 }
 
-void pbg_tonumber(pbg_number_lt* ptr, char* str, int n)
+void pbg_tonumber(pbg_lt_number* ptr, char* str, int n)
 {
 	PBG_UNUSED(n);
 	ptr->_val = atof(str);
 }
 
-int pbg_cmpnumber(pbg_number_lt* n1, pbg_number_lt* n2)
+int pbg_cmpnumber(pbg_lt_number* n1, pbg_lt_number* n2)
 {
 	if(n1->_val < n2->_val) return -1;
 	if(n1->_val > n2->_val) return 1;
 	return 0;
 }
 
-int pbg_cmpdate(pbg_date_lt* n1, pbg_date_lt* n2)
+int pbg_cmpdate(pbg_lt_date* n1, pbg_lt_date* n2)
 {
 	if(n1->_YYYY < n2->_YYYY) return -1;
 	if(n1->_YYYY > n2->_YYYY) return 1;
@@ -1205,12 +1228,12 @@ int pbg_cmpdate(pbg_date_lt* n1, pbg_date_lt* n2)
 	return 0;
 }
 
-int pbg_cmpstring(pbg_string_lt* s1, pbg_string_lt* s2, int n)
+int pbg_cmpstring(pbg_lt_string* s1, pbg_lt_string* s2, int n)
 {
 	return strncmp(s1, s2, n);
 }
 
-int pbg_iskey(char* str, int n)
+int pbg_isvar(char* str, int n)
 {
 	return str[0] == '[' && str[n-1] == ']';
 }
@@ -1232,7 +1255,7 @@ int pbg_isdate(char* str, int n)
 		pbg_isdigit(str[8]) && pbg_isdigit(str[9]);
 }
 
-void pbg_todate(pbg_date_lt* ptr, char* str, int n)
+void pbg_todate(pbg_lt_date* ptr, char* str, int n)
 {
 	if(n != 10) return;
 	ptr->_YYYY = (str[0]-'0')*1000 + (str[1]-'0')*100 + (str[2]-'0')*10 + (str[3]-'0');

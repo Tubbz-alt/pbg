@@ -44,5 +44,5 @@ pbg_field dictionary(char* key, int n)
 		return pbg_make_number(NULL, "5.0", strlen("5.0"));
 	if(key[0] == 'c')
 		return pbg_make_number(NULL, "6.0", strlen("6.0"));
-	return pbg_make_field(PBG_UNKNOWN);
+	return pbg_make_field(PBG_NULL);
 }
