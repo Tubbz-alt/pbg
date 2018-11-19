@@ -19,7 +19,7 @@ PBG is designed to be used as a module within [**tbd**, the Tiny Boolean DBMS](h
 
 ## example
 
-The below example is found in `test/example.c`. It evaluates the expression `(&(=[a][b])(?[d]))` with `a=5.0`, `[b]=5.0`, and `[c]=6.0`. 
+The below example is found in `test/example.c`. It evaluates the expression `(&(=[a][b])(?[d]))` with `a=5.0`, `b=5.0`, and `c=6.0`. 
 ```C
 #include "../pbg.h"
 #include <stdio.h>
@@ -70,14 +70,14 @@ pbg_field dictionary(char* key, int n)
 	return pbg_make_field(PBG_NULL);
 }
 ```
-The output is `FALSE` because `(?[d])` asks if the variable `[d]` is defined, which it is not. The expression `(|(=[a][b])(?[d]))` is `TRUE`, however, because `(=[a][b])` asks if `[a]` and `[b]` are equal, which they are.
+The output is `FALSE` because `(?[d])` asks if the variable `d` is defined, which it is not. The expression `(|(=[a][b])(?[d]))` is `TRUE`, however, because `(=[a][b])` asks if `a` and `b` are equal, which they are.
 
 
 ## design goals
 
 pbg is built with three goals in mind.
 
-First, it must be **simple**. It shouldn't be bogged down by redundant features, it should be easy to express thoughts with, and it must be easy to write an interpreter/compiler for.
+First, it must be **simple**. It shouldn't be bogged down by too many redundant features, it should be easy to express thoughts with, and it must be easy to write a compiler for.
 
 Second, it must be **unambigous**. Any expression string must have an unambiguous truth value. Operator precedence invites bugs for the sake of better readability. This seems like a bad idea, so it is avoided.
 
@@ -158,11 +158,11 @@ The `GTE` operator is written as `>=`. It takes two inputs of any type and retur
 
 ##### EXST
 
-The `EXST` operator is written as `?`. It takes one input of any type and returns `TRUE` only if it its argument is not `NULL`. `EXST` is useful for checking if a variable is defined.
+The `EXST` operator is written as `?`. It takes one input of any type including `NULL` and returns `TRUE` only if it its argument is not `NULL`. `EXST` is useful for checking if a variable is defined.
 
 ##### TYPE
 
-The `TYPE` operator is written as `@`. Its first argument is a type literal, and every argument thereafter may be of any type. It returns `TRUE` only if every argument after the first has the type specified by the first. For example, `(@ NUMBER 3.14 'hi' 17)` returns `FALSE` because `'hi'` is not a `NUMBER` even though `3.14` and `17` are. Notice that `(?[a])` and `(@ NULL [a])` have the same truth table.
+The `TYPE` operator is written as `@`. Its first argument is a type literal, and every argument thereafter may be of any type including `NULL`. It returns `TRUE` only if every argument after the first has the type specified by the first. For example, `(@ NUMBER 3.14 'hi' 17)` returns `FALSE` because `'hi'` is not a `NUMBER` even though `3.14` and `17` are. Notice that `(?[a])` and `(@ NULL [a])` have the same truth table.
 
 
 ### the grammar
