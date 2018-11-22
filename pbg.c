@@ -34,6 +34,11 @@ typedef struct {
 	int    _i;    /* Index of error in string. */
 } pbg_syntax_err;  /* PBG_ERR_SYNTAX */
 
+typedef struct {
+	char*  _field;  /* String representing the unknown type. */
+	int    _n;      /* Length of field. */
+} pbg_unknown_type_err;  /* PBG_ERR_UNKNOWN_TYPE */
+
 
 /****************************
  *                          *
@@ -47,7 +52,7 @@ void pbg_field_free(pbg_field* field);
 
 /* ERROR MANAGEMENT */
 void pbg_err_alloc(pbg_error* err, int line, char* file);
-void pbg_err_unknown_type(pbg_error* err, int line, char* file);
+void pbg_err_unknown_type(pbg_error* err, int line, char* file, char* field, int n);
 void pbg_err_syntax(pbg_error* err, int line, char* file, char* str, int i, char* msg);
 void pbg_err_op_arity(pbg_error* err, int line, char* file, pbg_field_type type, int arity);
 void pbg_err_state(pbg_error* err, int line, char* file, char* msg);
@@ -153,6 +158,7 @@ void pbg_error_print(pbg_error* err)
 		return;
 	pbg_op_arity_err* arity;
 	pbg_syntax_err* syntax;
+	pbg_unknown_type_err* utype;
 	printf("error %s at %s:%d", 
 			pbg_error_str(err->_type), err->_file, err->_line);
 	switch(err->_type) {
@@ -167,6 +173,10 @@ void pbg_error_print(pbg_error* err)
 		case PBG_ERR_SYNTAX:
 			syntax = (pbg_syntax_err*) err->_data;
 			printf(": %s -> %s", (char*) syntax->_msg, syntax->_str+syntax->_i);
+			break;
+		case PBG_ERR_UNKNOWN_TYPE:
+			utype = (pbg_unknown_type_err*) err->_data;
+			printf(": failed to recognize %s (%d bytes)\n", (char*)utype->_field, utype->_n);
 			break;
 		default:
 			break;
@@ -183,13 +193,19 @@ void pbg_err_alloc(pbg_error* err, int line, char* file)
 	err->_data = NULL;
 }
 
-void pbg_err_unknown_type(pbg_error* err, int line, char* file)
+void pbg_err_unknown_type(pbg_error* err, int line, char* file, 
+		char* field, int n)
 {
 	err->_type = PBG_ERR_UNKNOWN_TYPE;
 	err->_line = line;
 	err->_file = file;
-	err->_int = 0;
-	err->_data = NULL;
+	err->_int = n;
+	err->_data = malloc(err->_int * sizeof(char));
+	if(err->_data == NULL) {
+		pbg_err_alloc(err, __LINE__, __FILE__);  /* gah. */
+		return;
+	}
+	memcpy(err->_data, field, err->_int);
 }
 
 void pbg_err_syntax(pbg_error* err, int line, char* file, 
@@ -436,7 +452,7 @@ int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str,
 	/* Identify type of field. If the type cannot be resolve, throw an error. */
 	pbg_field_type type = pbg_gettype(str + strfieldstart, n);
 	if(type == PBG_NULL) {
-		pbg_err_unknown_type(err, __LINE__, __FILE__);
+		pbg_err_unknown_type(err, __LINE__, __FILE__, str + strfieldstart, n);
 		return 0;
 	}
 	
@@ -520,7 +536,7 @@ int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str,
 				fieldi = pbg_store_constant(e, pbg_make_field(type));
 				break;
 			default:
-				pbg_err_unknown_type(err, __LINE__, __FILE__);
+				pbg_err_unknown_type(err, __LINE__, __FILE__, str, n);
 				return 0;
 		}
 	}
@@ -583,17 +599,16 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 				instring = 1;
 				do i++; while(i != n && !(str[i] == '\'' && str[i-1] != '\\'));
 				if(i != n) instring = 0;
-			}
 			/* It's a variable! */
-			else if(str[i] == '[') {
+			}else if(str[i] == '[') {
 				invar = 1;
 				do i++; while(!(str[i] == ']' && str[i-1] != '\\'));
 				if(i != n) invar = 0;
-			}
 			/* It's literally anything else! */
-			else
-				while(!pbg_iswhitespace(str[i+1]) && str[i+1] != '[' && 
-						str[i+1] != '(' && str[i+1] != ')') i++;
+			}else
+				while(i != n && !pbg_iswhitespace(str[i+1]) && 
+						str[i+1] != '[' && str[i+1] != '(' && str[i+1] != ')') 
+					i++;
 			numfields++;
 		}
 	}
@@ -609,12 +624,6 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 				"Unclosed variable.");
 		return;
 	}
-	/* Check if there are any parentheses at all . */
-	if(numclosings == 0) {
-		pbg_err_syntax(err, __LINE__, __FILE__, str, 0,
-				"Every PBG expression must be bound with parentheses.");
-		return;
-	}
 	/* Check if opening parentheses are left unclosed. */
 	if(depth != 0) {
 		pbg_err_syntax(err, __LINE__, __FILE__, str, 0,
@@ -627,6 +636,8 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 	int numvariable = numvars;
 	
 	/* Allocate space for needed arrays. */
+	/* One extra field is allocated to be set to -1. This helps determine when 
+	 * we've looped through every field. */
 	int* fields = (int*) malloc((numfields+1) * sizeof(int));
 	if(fields == NULL) {
 		pbg_err_alloc(err, __LINE__, __FILE__);
@@ -645,12 +656,14 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 	
 	/* Identify the indices of all fields and closings as well as lengths of 
 	 * the fields. */
-	for(int i = 0, c = 0, f = 0; i < n; i++) {
+	for(int i = 0, c = 0, f = 0, opened = 0; i < n; i++) {
 		/* Whitespaces are the enemy. */
 		if(pbg_iswhitespace(str[i])) continue;
 		/* It's a close! */
 		if(str[i] == ')') {
 			closings[c++] = i;
+		}else if(str[i] == '(') {
+			opened = 1;
 		/* It's a field! */
 		}else if(str[i] != '(') {
 			/* Grab index of field. */
@@ -663,10 +676,22 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 				do i++; while(!(str[i] == ']' && str[i-1] != '\\'));
 			/* It's literally anything else! */
 			else
-				while(!pbg_iswhitespace(str[i+1]) && str[i+1] != '[' && 
+				while(i != n-1 && !pbg_iswhitespace(str[i+1]) && str[i+1] != '[' && 
 						str[i+1] != '(' && str[i+1] != ')') i++;
 			/* Compute length of field. */
-			lengths[f] = i - fields[f] + 1, f++;
+			lengths[f] = i - fields[f] + 1;
+			/* Record opening field index. This will be checked as an 
+			 * operator later. */
+			if(opened == 1) {
+				pbg_field_type type = pbg_gettype(str + fields[f], lengths[f]);
+				if(type < PBG_MIN_OP || type > PBG_MAX_OP) {
+					pbg_err_syntax(err, __LINE__, __FILE__, str, fields[f],
+							"Not an operator!");
+					return;
+				}
+				opened = 0;
+			}
+			f++;
 		}
 	}
 	
@@ -973,7 +998,8 @@ int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_field* field)
 			case PBG_OP_LTE:  return pbg_evaluate_op_lte(e, err, field);
 			case PBG_OP_GTE:  return pbg_evaluate_op_gte(e, err, field);
 			case PBG_OP_TYPE: return pbg_evaluate_op_typeof(e, err, field);
-			default: pbg_err_unknown_type(err, __LINE__, __FILE__);
+			default: pbg_err_state(err, __LINE__, __FILE__,
+							"Unsupported operation.");
 		}
 		return -1;
 	}

@@ -53,16 +53,24 @@ int suite_evaluate()
 	init_test();
 	
 	/* TRUE */
-	check(test_evaluate(&err, "(TRUE)", dict, TRUE));
-	check(test_evaluate(&err, "( TRUE)", dict, TRUE));
-	check(test_evaluate(&err, "(TRUE )", dict, TRUE));
-	check(test_evaluate(&err, "( TRUE )", dict, TRUE));
+	check(test_evaluate(&err, "TRUE", dict, TRUE));
+	check(test_evaluate(&err, "  TRUE", dict, TRUE));
+	check(test_evaluate(&err, "TRUE  ", dict, TRUE));
+	check(test_evaluate(&err, "((TRUE))", dict, ERROR));
+	check(test_evaluate(&err, "(TRUE)", dict, ERROR));
+	check(test_evaluate(&err, "(TRUE)", dict, ERROR));
+	check(test_evaluate(&err, "( TRUE)", dict, ERROR));
+	check(test_evaluate(&err, "(TRUE )", dict, ERROR));
+	check(test_evaluate(&err, "( TRUE )", dict, ERROR));
 	check(test_evaluate(&err, "(TRU)", dict, ERROR));
 	/* FALSE */
-	check(test_evaluate(&err, "(FALSE)", dict, FALSE));
-	check(test_evaluate(&err, "( FALSE)", dict, FALSE));
-	check(test_evaluate(&err, "(FALSE )", dict, FALSE));
-	check(test_evaluate(&err, "( FALSE )", dict, FALSE));
+	check(test_evaluate(&err, "FALSE", dict, FALSE));
+	check(test_evaluate(&err, "  FALSE", dict, FALSE));
+	check(test_evaluate(&err, "FALSE  ", dict, FALSE));
+	check(test_evaluate(&err, "(FALSE)", dict, ERROR));
+	check(test_evaluate(&err, "( FALSE)", dict, ERROR));
+	check(test_evaluate(&err, "(FALSE )", dict, ERROR));
+	check(test_evaluate(&err, "( FALSE )", dict, ERROR));
 	check(test_evaluate(&err, "(FALS)", dict, ERROR));
 	/* NOT */
 	check(test_evaluate(&err, "(! FALSE)", dict, TRUE));
@@ -258,8 +266,6 @@ int suite_evaluate()
 	check(test_evaluate(&err, "(!(= 10 10))", dict, FALSE));
 	check(test_evaluate(&err, "(&(= 10 10)(= 20 20))", dict, TRUE));
 	check(test_evaluate(&err, "(&(?[a])(?[b]))", dict, TRUE));
-//	check(test_evaluate(&err, "((TRUE))", dict, ERROR));   // TODO fixme!
-//	check(test_evaluate(&err, "TRUE", dict, TRUE));  // TODO fixme!
 	
 	/* Ensure operators work as expected with subexpressions. */
 	check(test_evaluate(&err, "(< (?[1])(?[1]))", dict, FALSE));
