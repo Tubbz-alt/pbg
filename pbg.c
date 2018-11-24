@@ -45,10 +45,6 @@ typedef struct {
  * LOCAL FUNCTION DIRECTORY *
  *                          *
  ****************************/
- 
-/* FIELD MANAGEMENT */
-pbg_field* pbg_field_get(pbg_expr* e, int index);
-void pbg_field_free(pbg_field* field);
 
 /* ERROR MANAGEMENT */
 void pbg_err_alloc(pbg_error* err, int line, char* file);
@@ -57,15 +53,18 @@ void pbg_err_syntax(pbg_error* err, int line, char* file, char* str, int i, char
 void pbg_err_op_arity(pbg_error* err, int line, char* file, pbg_field_type type, int arity);
 void pbg_err_state(pbg_error* err, int line, char* file, char* msg);
 void pbg_err_op_arg_type(pbg_error* err, int line, char* file);
-
-char* pbg_field_type_str(pbg_field_type type);
 char* pbg_error_str(pbg_error_type type);
+char* pbg_field_type_str(pbg_field_type type);
+ 
+/* FIELD MANAGEMENT */
+pbg_field* pbg_field_get(pbg_expr* e, int index);
+void pbg_field_free(pbg_field* field);
+int pbg_store_constant(pbg_expr* e, pbg_field field);
+int pbg_store_variable(pbg_expr* e, pbg_field field);
 
 /* FIELD CREATION TOOLKIT */
 pbg_field pbg_make_op(pbg_error* err, pbg_field_type type, int numchildren);
 pbg_field pbg_make_var(pbg_error* err, char* str, int n);
-int pbg_store_constant(pbg_expr* e, pbg_field field);
-int pbg_store_variable(pbg_expr* e, pbg_field field);
 
 /* FIELD PARSING TOOLKIT */
 int pbg_check_op_arity(pbg_field_type type, int numargs);
@@ -73,7 +72,6 @@ int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str,
 		int** fields, int** lengths, int** closings);
 
 /* FIELD EVALUATION TOOLKIT */
-int pbg_isbool(pbg_field_type type);
 int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_field* field);
 int pbg_evaluate_op_not(pbg_expr* e, pbg_error* err, pbg_field* field);
 int pbg_evaluate_op_and(pbg_expr* e, pbg_error* err, pbg_field* field);
@@ -109,41 +107,12 @@ int pbg_cmpnumber(pbg_lt_number* n1, pbg_lt_number* n2);
 int pbg_cmpdate(pbg_lt_date* d1, pbg_lt_date* d2);
 int pbg_cmpstring(pbg_lt_string* s1, pbg_lt_string* s2, int n);
 
+int pbg_type_isbool(pbg_field_type type);
+int pbg_type_isop(pbg_field_type type);
+
 /* HELPER FUNCTIONS */
 int pbg_isdigit(char c);
 int pbg_iswhitespace(char c);
-
-
-/********************
- *                  *
- * FIELD MANAGEMENT *
- *                  *
- ********************/
-
-/**
- * This function returns the field identified by the given index. Constant fields
- * are identified by positive indices starting at 1. Variable fields are
- * identified by negative indices starting at -1.
- * @param e      PBG expression to get field from.
- * @param index  Index of the field to get.
- * @return Pointer to the pbg_field in e specified by the index,
- *         NULL if index is 0.
- */
-pbg_field* pbg_field_get(pbg_expr* e, int index)
-{
-	if(index < 0) return e->_variables - (index+1);
-	if(index > 0) return e->_constants + (index-1);
-	return NULL;
-}
-
-/**
- * Free's the single pbg_field pointed to by the specified pointer.
- * @param field  pbg_field to free.
- */
-void pbg_field_free(pbg_field* field)
-{
-	if(field->_data != NULL) free(field->_data);
-}
 
 
 /**********************
@@ -263,6 +232,70 @@ void pbg_error_free(pbg_error* err)
 }
 
 
+/********************
+ *                  *
+ * FIELD MANAGEMENT *
+ *                  *
+ ********************/
+
+/**
+ * This function returns the field identified by the given index. Constant fields
+ * are identified by positive indices starting at 1. Variable fields are
+ * identified by negative indices starting at -1.
+ * @param e      PBG expression to get field from.
+ * @param index  Index of the field to get.
+ * @return Pointer to the pbg_field in e specified by the index,
+ *         NULL if index is 0.
+ */
+pbg_field* pbg_field_get(pbg_expr* e, int index)
+{
+	if(index < 0) return e->_variables - (index+1);
+	if(index > 0) return e->_constants + (index-1);
+	return NULL;
+}
+
+/**
+ * Free's the single pbg_field pointed to by the specified pointer.
+ * @param field  pbg_field to free.
+ */
+void pbg_field_free(pbg_field* field)
+{
+	if(field->_data != NULL) free(field->_data);
+}
+
+/**
+ * This function stores the given constant field in the AST. Constant fields are
+ * indexed using positive values starting at 1.
+ * @param e     Abstract expression tree to store field in.
+ * @param field  Field to store.
+ * @return a positive index if successful,
+ *         0 otherwise.
+ */
+int pbg_store_constant(pbg_expr* e, pbg_field field)
+{
+	if(field._type == PBG_NULL)
+		return 0;
+	int fieldi = 1 + e->_numconst++;
+	*pbg_field_get(e, fieldi) = field;
+	return fieldi;
+}
+
+/**
+ * This function stores the given variable field in the AST. Variable fields are
+ * indexed using negative values starting at -1.
+ * @param e     Abstract expression tree to store field in.
+ * @param field  Field to store.
+ * @return a negative index if successful,
+ *         0 otherwise.
+ */
+int pbg_store_variable(pbg_expr* e, pbg_field field)
+{
+	int fieldi = -(1 + e->_numvars++);
+	*pbg_field_get(e, fieldi) = field;
+	return fieldi;
+}
+
+
 /**************************
  *                        *
  * FIELD CREATION TOOLKIT *
@@ -359,38 +392,6 @@ pbg_field pbg_make_string(pbg_error* err, char* str, int n)
 	return field;
 }
 
-/**
- * This function stores the given constant field in the AST. Constant fields are
- * indexed using positive values starting at 1.
- * @param e     Abstract expression tree to store field in.
- * @param field  Field to store.
- * @return a positive index if successful,
- *         0 otherwise.
- */
-int pbg_store_constant(pbg_expr* e, pbg_field field)
-{
-	if(field._type == PBG_NULL)
-		return 0;
-	int fieldi = 1 + e->_numconst++;
-	*pbg_field_get(e, fieldi) = field;
-	return fieldi;
-}
-
-/**
- * This function stores the given variable field in the AST. Variable fields are
- * indexed using negative values starting at -1.
- * @param e     Abstract expression tree to store field in.
- * @param field  Field to store.
- * @return a negative index if successful,
- *         0 otherwise.
- */
-int pbg_store_variable(pbg_expr* e, pbg_field field)
-{
-	int fieldi = -(1 + e->_numvars++);
-	*pbg_field_get(e, fieldi) = field;
-	return fieldi;
-}
-
 
 /*************************
  *                       *
@@ -457,7 +458,7 @@ int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str,
 	}
 	
 	/* This field is an operator. */
-	if(type > PBG_MAX_LT && type < PBG_MAX_OP) {
+	if(pbg_type_isop(type)) {
 		pbg_field* field;
 		
 		/* Maximum number of children this field has allocated space for. */
@@ -684,7 +685,7 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 			 * operator later. */
 			if(opened == 1) {
 				pbg_field_type type = pbg_gettype(str + fields[f], lengths[f]);
-				if(type < PBG_MIN_OP || type > PBG_MAX_OP) {
+				if(!pbg_type_isop(type)) {
 					pbg_err_syntax(err, __LINE__, __FILE__, str, fields[f],
 							"Not an operator!");
 					return;
@@ -744,18 +745,6 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
  *                          *
  ****************************/
 
-/**
- * Checks if the given type is an operator, TRUE, or FALSE. Useful for checking 
- * if both arguments will have a valid return value from pbg_evaluate_r.
- * @param type  Type to check.
- * @return 1 if the given type is TRUE, FALSE, or an operator,
- *         0 otherwise.
- */
-int pbg_isbool(pbg_field_type type)
-{
-	return type == PBG_LT_TRUE || type == PBG_LT_FALSE || (type < PBG_MAX_OP && type > PBG_MIN_OP);
-}
-
 int pbg_evaluate_op_not(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
 	int child0 = ((int*)field->_data)[0];
@@ -804,7 +793,7 @@ int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_field* field)
 	int child0 = ((int*)field->_data)[0];
 	pbg_field* c0 = pbg_field_get(e, child0);
 	/* We have a bunch of BOOLs! Evaluate them. */
-	if(pbg_isbool(c0->_type)) {
+	if(pbg_type_isbool(c0->_type)) {
 		int res = pbg_evaluate_r(e, err, c0);
 		for(int i = 1; i < size; i++) {
 			int childi = ((int*)field->_data)[i];
@@ -836,7 +825,7 @@ int pbg_evaluate_op_neq(pbg_expr* e, pbg_error* err, pbg_field* field)
 	pbg_field* c0 = pbg_field_get(e, child0);
 	pbg_field* c1 = pbg_field_get(e, child1);
 	/* We have two BOOLs! Evaluate them, and check if they are different. */
-	if(pbg_isbool(c0->_type) && pbg_isbool(c1->_type))
+	if(pbg_type_isbool(c0->_type) && pbg_type_isbool(c1->_type))
 		return pbg_evaluate_r(e, err, c0) != pbg_evaluate_r(e, err, c1);
 	/* We don't have a bunch of BOOLs! Do standard difference check. */
 	else return c1->_type != c0->_type || 
@@ -862,7 +851,7 @@ int pbg_evaluate_op_lt(pbg_expr* e, pbg_error* err, pbg_field* field)
 			c1->_type == PBG_LT_STRING)
 		return pbg_cmpstring(c0->_data, c1->_data, c0->_int) < 0;
 	/* Both are BOOLs. */
-	if(pbg_isbool(c0->_type) && pbg_isbool(c1->_type))
+	if(pbg_type_isbool(c0->_type) && pbg_type_isbool(c1->_type))
 		return pbg_evaluate_r(e, err, c0) < pbg_evaluate_r(e, err, c1);
 	pbg_err_op_arg_type(err, __LINE__, __FILE__);
 	return -1;
@@ -886,7 +875,7 @@ int pbg_evaluate_op_gt(pbg_expr* e, pbg_error* err, pbg_field* field)
 			c1->_type == PBG_LT_STRING)
 		return pbg_cmpstring(c0->_data, c1->_data, c0->_int) > 0;
 	/* Both are BOOLs. */
-	if(pbg_isbool(c0->_type) && pbg_isbool(c1->_type))
+	if(pbg_type_isbool(c0->_type) && pbg_type_isbool(c1->_type))
 		return pbg_evaluate_r(e, err, c0) > pbg_evaluate_r(e, err, c1);
 	pbg_err_op_arg_type(err, __LINE__, __FILE__);
 	return -1;
@@ -910,7 +899,7 @@ int pbg_evaluate_op_lte(pbg_expr* e, pbg_error* err, pbg_field* field)
 			c1->_type == PBG_LT_STRING)
 		return pbg_cmpstring(c0->_data, c1->_data, c0->_int) <= 0;
 	/* Both are BOOLs. */
-	if(pbg_isbool(c0->_type) && pbg_isbool(c1->_type))
+	if(pbg_type_isbool(c0->_type) && pbg_type_isbool(c1->_type))
 		return pbg_evaluate_r(e, err, c0) <= pbg_evaluate_r(e, err, c1);
 	pbg_err_op_arg_type(err, __LINE__, __FILE__);
 	return -1;
@@ -934,7 +923,7 @@ int pbg_evaluate_op_gte(pbg_expr* e, pbg_error* err, pbg_field* field)
 			c1->_type == PBG_LT_STRING)
 		return pbg_cmpstring(c0->_data, c1->_data, c0->_int) >= 0;
 	/* Both are BOOLs. */
-	if(pbg_isbool(c0->_type) && pbg_isbool(c1->_type))
+	if(pbg_type_isbool(c0->_type) && pbg_type_isbool(c1->_type))
 		return pbg_evaluate_r(e, err, c0) >= pbg_evaluate_r(e, err, c1);
 	pbg_err_op_arg_type(err, __LINE__, __FILE__);
 	return -1;
@@ -973,34 +962,28 @@ int pbg_evaluate_op_typeof(pbg_expr* e, pbg_error* err, pbg_field* field)
  */
 int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	/* This is a literal field! */
-	if(field->_type < PBG_MAX_LT) {
-		if(field->_type == PBG_LT_TRUE)  return 1;
-		if(field->_type == PBG_LT_FALSE) return 0;
-		
-		/* TRUE and FALSE are the only literals with truth values. 
-		 * If we get here, there's a bug, and we need to throw an error. */
-		pbg_err_state(err, __LINE__, __FILE__, 
-				"Cannot evaluate a literal without a truth value.");
-		return -1;
-		
-	/* This is an operator field! */
-	}else {
+	if(pbg_type_isbool()) {
 		switch(field->_type) {
-			case PBG_OP_NOT:  return pbg_evaluate_op_not(e, err, field);
-			case PBG_OP_AND:  return pbg_evaluate_op_and(e, err, field);
-			case PBG_OP_OR:   return pbg_evaluate_op_or(e, err, field);
-			case PBG_OP_EXST: return pbg_evaluate_op_exst(e, err, field);
-			case PBG_OP_EQ:   return pbg_evaluate_op_eq(e, err, field);
-			case PBG_OP_NEQ:  return pbg_evaluate_op_neq(e, err, field);
-			case PBG_OP_LT:   return pbg_evaluate_op_lt(e, err, field);
-			case PBG_OP_GT:   return pbg_evaluate_op_gt(e, err, field);
-			case PBG_OP_LTE:  return pbg_evaluate_op_lte(e, err, field);
-			case PBG_OP_GTE:  return pbg_evaluate_op_gte(e, err, field);
-			case PBG_OP_TYPE: return pbg_evaluate_op_typeof(e, err, field);
+			case PBG_OP_NOT:   return pbg_evaluate_op_not(e, err, field);
+			case PBG_OP_AND:   return pbg_evaluate_op_and(e, err, field);
+			case PBG_OP_OR:    return pbg_evaluate_op_or(e, err, field);
+			case PBG_OP_EXST:  return pbg_evaluate_op_exst(e, err, field);
+			case PBG_OP_EQ:    return pbg_evaluate_op_eq(e, err, field);
+			case PBG_OP_NEQ:   return pbg_evaluate_op_neq(e, err, field);
+			case PBG_OP_LT:    return pbg_evaluate_op_lt(e, err, field);
+			case PBG_OP_GT:    return pbg_evaluate_op_gt(e, err, field);
+			case PBG_OP_LTE:   return pbg_evaluate_op_lte(e, err, field);
+			case PBG_OP_GTE:   return pbg_evaluate_op_gte(e, err, field);
+			case PBG_OP_TYPE:  return pbg_evaluate_op_typeof(e, err, field);
+			case PBG_LT_TRUE:  return 1;
+			case PBG_LT_FALSE: return 0;
 			default: pbg_err_state(err, __LINE__, __FILE__,
 							"Unsupported operation.");
 		}
+		return -1;
+	}else{
+		pbg_err_state(err, __LINE__, __FILE__, 
+				"Cannot evaluate a non-BOOL value.");
 		return -1;
 	}
 }
@@ -1329,6 +1312,30 @@ void pbg_todate(pbg_lt_date* ptr, char* str, int n)
 	ptr->_MM = (str[5]-'0')*10 + (str[6]-'0');
 	ptr->_DD = (str[8]-'0')*10 + (str[9]-'0');
 	// TODO enforce ranges on months and days
+}
+
+/**
+ * Checks if the given type is an operator, TRUE, or FALSE. Useful for checking 
+ * if both arguments will have a valid return value from pbg_evaluate_r.
+ * @param type  Type to check.
+ * @return 1 if the given type is TRUE, FALSE, or an operator,
+ *         0 otherwise.
+ */
+int pbg_type_isbool(pbg_field_type type)
+{
+	return type == PBG_LT_TRUE || type == PBG_LT_FALSE || 
+			(type < PBG_MAX_OP && type > PBG_MIN_OP);
+}
+
+/**
+ * Checks if the given type is an operator.
+ * @param type  Type to check.
+ * @return 1 if the given type is an operator,
+ *         0 otherwise.
+ */
+int pbg_type_isop(pbg_field_type type)
+{
+	return type > PBG_MIN_OP && type < PBG_MAX_OP;
 }
 
 
