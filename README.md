@@ -49,8 +49,8 @@ BOOL
   = (> ANY ANY)
   = (<= ANY ANY)
   = (>= ANY ANY)
-  = (? ALL)
-  = (@ TYPE ALL ...)
+  = (? ANY)
+  = (@ TYPE ANY ...)
   = TRUE
   = FALSE
 ANY
