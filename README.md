@@ -1,7 +1,7 @@
 # pbg
 A simple grammar for writing boolean expressions implemented in a small, portable C library.
 
-[about](#about) | [example](#example) | [design goals](#design-goals) | [formal definition](#formal-definition) | [API](#API)
+[about](#about) | [philosophy](#philosophy) | [features](#features) | [design](#design) | [API & example](#API)
 
 
 ## about
@@ -14,79 +14,28 @@ The following is a PBG expression:
 ```
 This expression checks if the variable `start` is less than the variable `end` and if `start` is a date equal to October 12, 2018. It evaluates to `TRUE` only if both conditions are `TRUE`.
 
-PBG is designed to be used as a module within [**tbd**, the Tiny Boolean DBMS](https://github.com/imtjd/tbd).
+PBG is designed to be used as a module within [**tbd**, the Tiny Boolean DBMS](https://github.com/imtjd/tbd); however, feel free to use it wherever a use can be found.
 
 
-## example
+## philosophy
 
-The below example is found in `test/example.c`. It evaluates the expression `(&(=[a][b])(?[d]))` with `a=5.0`, `b=5.0`, and `c=6.0`. 
-```C
-#include "../pbg.h"
-#include <stdio.h>
-#include <string.h>
+pbg (the grammar) is designed to be **simple** (simple syntax with a minimal set of features), **readable** (easy to read and write expressions), and **expressive** (expressions pack the full punch of propositional logic).
 
-/* Our dictionary prototype! */
-pbg_field dictionary(char* key, int n);
-
-int main(void)
-{
-	pbg_error err;
-	pbg_expr e;
-	
-	/* This is the expression string we'll evaluate using our dictionary. */
-	/* "Are [a] and [b] the same, and does [d] exist?" */
-	char* str = "(&(=[a][b])(?[d]))";
-	
-	/* Parse the expression string and check if 
-	 * there were any compilation errors. */
-	pbg_parse(&e, &err, str, strlen(str));
-	if(pbg_iserror(&err)) {
-		pbg_error_print(&err);
-		return 1;
-	}
-	
-	/* Evaluate the expression string and check if 
-	 * there were any runtime errors. */
-	int result = pbg_evaluate(&e, &err, dictionary);
-	if(pbg_iserror(&err)) {
-		pbg_error_print(&err);
-		return 1;
-	}
-	
-	/* Success! Print the output. */
-	printf("%s is %s\n", str, (result == 1) ? "TRUE" : "FALSE");
-	return 0;
-}
-
-/* This is a simple, handmade dictionary. A more general implementation would 
- * (hopefully) utilize a dictionary data structure. */
-pbg_field dictionary(char* key, int n)
-{
-	PBG_UNUSED(n);  /* Ignore compiler warnings. */
-	if(key[0] == 'a' || key[0] == 'b')
-		return pbg_make_number(NULL, "5.0", strlen("5.0"));
-	if(key[0] == 'c')
-		return pbg_make_number(NULL, "6.0", strlen("6.0"));
-	return pbg_make_field(PBG_NULL);
-}
-```
-The output is `FALSE` because `(?[d])` asks if the variable `d` is defined, which it is not. The expression `(|(=[a][b])(?[d]))` is `TRUE`, however, because `(=[a][b])` asks if `a` and `b` are equal, which they are.
+pbg (the C library) is designed to be **fast** (quick compilation and evaluation), **robust** (faithful implementation of the grammar, full error reporting on failure), and **simple** (few API functions, flexible dictionary implementation).
 
 
-## design goals
+## features
 
-pbg is built with three goals in mind.
-
-First, it must be **simple**. It shouldn't be bogged down by too many redundant features, it should be easy to express thoughts with, and it must be easy to write a compiler for.
-
-Second, it must be **unambigous**. Any expression string must have an unambiguous truth value. Operator precedence invites bugs for the sake of better readability. This seems like a bad idea, so it is avoided.
-
-Third, it must be **expressive**. Thoughts should be easily translated into concise expressions. The grammar falls short of Turing completeness for the sake of simplicity, but it can still go a long way. 
+- simple, powerful grammar
+- fast compilation and evaluation
+- compatible with C99
+- no dependencies except libc
+- small memory footprint
 
 
-## formal definition
+## design
 
-The following grammar generates strings in **pbg**. We call these **PBG expressions**. The following is the grammar that can be used to generate expression strings in **pgb**:
+All valid pbg expressions can be generated with the following grammar:
 ```
 EXPR
   = BOOL
@@ -112,15 +61,15 @@ ANY
   = NULL
 ```
 
-This grammar is defined recursively, so a PBG expression can be elegantly represented by an abstract syntax tree (AST).
+This grammar is defined recursively, so a pbg expression can be elegantly represented with an abstract syntax tree (AST).
 
 Each node in the tree is represented by a **field**. A field can be either an **operator** or a **literal**. Operators are always internal nodes of the AST; literals, always leaves.
 
-Each field has a **type**. The type of an operator determines its function as well as the types and multiplicity of its children (read: inputs). The type of a literal determines how the data within the field is interpreted and which operators it can be an argument of.
+Each field has a **type**. The type of an operator determines its function as well as the types and multiplicity of its children (read: inputs). The type of a literal determines how the data within the field is interpreted and which operators it can be an input of.
 
 ### literals
 
-Literals are typed. The following types are supported: `DATE`, `BOOL`, `NUMBER`, `STRING`, and `NULL`. In addition to these, there exist meta-literals called **type literals**. These are used by the type check operator and are not listed here.
+Literals are typed. The following types are supported: `DATE`, `BOOL`, `NUMBER`, `STRING`, and `NULL`. There also exist meta-literals called **type literals**. Instead of values having types, these reference the types themselves and are used by the `TYPE` operator.
 
 ##### DATE
 
@@ -286,3 +235,58 @@ void pbg_error_print(pbg_error* err)
 /* Frees resources being used by the given error, if any. */
 void pbg_error_free(pbg_error* e)
 ```
+
+### example
+
+The below example is found in `test/example.c`. It evaluates the expression `(&(=[a][b])(?[d]))` with `a=5.0`, `b=5.0`, and `c=6.0`. 
+```C
+#include "../pbg.h"
+#include <stdio.h>
+#include <string.h>
+
+/* Our dictionary prototype! */
+pbg_field dictionary(char* key, int n);
+
+int main(void)
+{
+	pbg_error err;
+	pbg_expr e;
+	
+	/* This is the expression string we'll evaluate using our dictionary. */
+	/* "Are [a] and [b] the same, and does [d] exist?" */
+	char* str = "(&(=[a][b])(?[d]))";
+	
+	/* Parse the expression string and check if 
+	 * there were any compilation errors. */
+	pbg_parse(&e, &err, str, strlen(str));
+	if(pbg_iserror(&err)) {
+		pbg_error_print(&err);
+		return 1;
+	}
+	
+	/* Evaluate the expression string and check if 
+	 * there were any runtime errors. */
+	int result = pbg_evaluate(&e, &err, dictionary);
+	if(pbg_iserror(&err)) {
+		pbg_error_print(&err);
+		return 1;
+	}
+	
+	/* Success! Print the output. */
+	printf("%s is %s\n", str, (result == 1) ? "TRUE" : "FALSE");
+	return 0;
+}
+
+/* This is a simple, handmade dictionary. A more general implementation would 
+ * (hopefully) utilize a dictionary data structure. */
+pbg_field dictionary(char* key, int n)
+{
+	PBG_UNUSED(n);  /* Ignore compiler warnings. */
+	if(key[0] == 'a' || key[0] == 'b')
+		return pbg_make_number(NULL, "5.0", strlen("5.0"));
+	if(key[0] == 'c')
+		return pbg_make_number(NULL, "6.0", strlen("6.0"));
+	return pbg_make_field(PBG_NULL);
+}
+```
+The output is `FALSE` because `(?[d])` asks if the variable `d` is defined, which it is not. The expression `(|(=[a][b])(?[d]))` is `TRUE`, however, because `(=[a][b])` asks if `a` and `b` are equal, which they are.
