@@ -238,6 +238,9 @@ int suite_evaluate()
 	check(test_evaluate(&err, "(@ BOOL TRUE FALSE 10 TRUE FALSE)", dict, FALSE));
 	check(test_evaluate(&err, "(@ BOOL 10)", dict, FALSE));
 	check(test_evaluate(&err, "(@ BOOL 'hi')", dict, FALSE));
+	check(test_evaluate(&err, "(@ BOOL (& 10 10))", dict, TRUE));
+	check(test_evaluate(&err, "(@ BOOL (& 10 10) FALSE TRUE (! FALSE))", dict, TRUE));
+	check(test_evaluate(&err, "(@ BOOL (& 10 10) 'hi' TRUE (! FALSE))", dict, FALSE));
 	check(test_evaluate(&err, "(@)", dict, ERROR));
 	check(test_evaluate(&err, "(@ 10 10)", dict, ERROR));
 	

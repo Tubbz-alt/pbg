@@ -24,8 +24,8 @@ typedef char pbg_lt_string; /* PBG_LT_STRING */
 
 /* ERROR REPRESENTATIONS */
 typedef struct {
-	int            _arity;  /* Number of arguments given to operator. */
-	pbg_field_type  _type;   /* Type of operator involved in error. */
+	int              _arity;  /* Number of arguments given to operator. */
+	pbg_field_type  _type;    /* Type of operator involved in error. */
 } pbg_op_arity_err;  /* PBG_ERR_OP_ARITY. */
 
 typedef struct {
@@ -944,8 +944,7 @@ int pbg_evaluate_op_typeof(pbg_expr* e, pbg_error* err, pbg_field* field)
 	for(int i = 1; i < size; i++) {
 		int childi = ((int*)field->_data)[i];
 		pbg_field* ci = pbg_field_get(e, childi);
-		if(type == PBG_LT_TP_BOOL && 
-				ci->_type != PBG_LT_TRUE && ci->_type != PBG_LT_FALSE)
+		if(type == PBG_LT_TP_BOOL && !pbg_type_isbool(ci->_type))
 			return 0;  /* FALSE */
 		if(type == PBG_LT_TP_DATE && ci->_type != PBG_LT_DATE)
 			return 0;  /* FALSE */
@@ -962,7 +961,7 @@ int pbg_evaluate_op_typeof(pbg_expr* e, pbg_error* err, pbg_field* field)
  */
 int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	if(pbg_type_isbool()) {
+	if(pbg_type_isbool(field->_type)) {
 		switch(field->_type) {
 			case PBG_OP_NOT:   return pbg_evaluate_op_not(e, err, field);
 			case PBG_OP_AND:   return pbg_evaluate_op_and(e, err, field);
