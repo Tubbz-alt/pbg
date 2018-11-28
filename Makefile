@@ -1,4 +1,4 @@
-CFLAGS=-Wall -Wextra -pedantic-errors -Wmissing-prototypes -Wstrict-prototypes -Werror -O3 -g
+CFLAGS=-std=c89 -Wall -Wextra -pedantic-errors -Wmissing-prototypes -Wstrict-prototypes -Werror -O3 -g
 
 all: tests example
 

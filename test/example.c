@@ -9,6 +9,7 @@ int main(void)
 {
 	pbg_error err;
 	pbg_expr e;
+	int result;
 	
 	/* This is the expression string we'll evaluate using our dictionary. */
 	/* "Are [a] and [b] the same, and does [d] exist?" */
@@ -24,7 +25,7 @@ int main(void)
 	
 	/* Evaluate the expression string and check if 
 	 * there were any runtime errors. */
-	int result = pbg_evaluate(&e, &err, dictionary);
+	result = pbg_evaluate(&e, &err, dictionary);
 	if(pbg_iserror(&err)) {
 		pbg_error_print(&err);
 		return 1;

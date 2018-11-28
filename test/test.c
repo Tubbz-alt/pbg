@@ -28,8 +28,8 @@ int main(void)
  * It defines keys [a]=5.0, [b]=5.0, and [c]=6.0. */
 pbg_field dict(char* key, int n)
 {
-	PBG_UNUSED(n);
 	pbg_field keylt;
+	PBG_UNUSED(n);
 	keylt._type = PBG_NULL;
 	keylt._int = 0;
 	keylt._data = NULL;
@@ -387,13 +387,14 @@ int test_gettype(char* str, pbg_field_type expect)
 int test_evaluate(pbg_error* err, char* str, pbg_field (*dict)(char*,int), int expect)
 {
 	pbg_expr e;
+	int output;
 	/* Parse the string expression. */
 	pbg_parse(&e, err, str, strlen(str));
 	/* Return if there's an error. */
 	if(err->_type != PBG_ERR_NONE)
 		return (expect == ERROR) ? PBG_TEST_PASS : PBG_TEST_FAIL;
 	/* Evaluate the expression with the given dictionary. */
-	int output = pbg_evaluate(&e, err, dict);
+	output = pbg_evaluate(&e, err, dict);
 	/* Clean up. */
 	pbg_free(&e);
 	/* Return if there's an error. */

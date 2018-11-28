@@ -123,11 +123,11 @@ int pbg_iswhitespace(char c);
 
 void pbg_error_print(pbg_error* err)
 {
-	if(err->_type == PBG_ERR_NONE)
-		return;
 	pbg_op_arity_err* arity;
 	pbg_syntax_err* syntax;
 	pbg_unknown_type_err* utype;
+	if(err->_type == PBG_ERR_NONE)
+		return;
 	printf("error %s at %s:%d", 
 			pbg_error_str(err->_type), err->_file, err->_line);
 	switch(err->_type) {
@@ -165,6 +165,7 @@ void pbg_err_alloc(pbg_error* err, int line, char* file)
 void pbg_err_unknown_type(pbg_error* err, int line, char* file, 
 		char* field, int n)
 {
+	pbg_unknown_type_err* data;
 	err->_type = PBG_ERR_UNKNOWN_TYPE;
 	err->_line = line;
 	err->_file = file;
@@ -174,12 +175,15 @@ void pbg_err_unknown_type(pbg_error* err, int line, char* file,
 		pbg_err_alloc(err, __LINE__, __FILE__);  /* gah. */
 		return;
 	}
-	memcpy(err->_data, field, err->_int);
+	data = (pbg_unknown_type_err*) err->_data;
+	data->_field = field;
+	data->_n = n;
 }
 
 void pbg_err_syntax(pbg_error* err, int line, char* file, 
 		char* str, int i, char* msg)
 {
+	pbg_syntax_err* data;
 	err->_type = PBG_ERR_SYNTAX;
 	err->_line = line;
 	err->_file = file;
@@ -189,12 +193,16 @@ void pbg_err_syntax(pbg_error* err, int line, char* file,
 		pbg_err_alloc(err, __LINE__, __FILE__); /* unfortunate. */
 		return;
 	}
-	*((pbg_syntax_err*)err->_data) = (pbg_syntax_err) { msg, str, i };
+	data = (pbg_syntax_err*)err->_data;
+	data->_msg = msg;
+	data->_str = str;
+	data->_i = i;
 }
 
 void pbg_err_op_arity(pbg_error* err, int line, char* file, 
 		pbg_field_type type, int arity)
 {
+	pbg_op_arity_err* data;
 	err->_type = PBG_ERR_OP_ARITY;
 	err->_line = line;
 	err->_file = file;
@@ -204,7 +212,9 @@ void pbg_err_op_arity(pbg_error* err, int line, char* file,
 		pbg_err_alloc(err, __LINE__, __FILE__); /* unfortunate. */
 		return;
 	}
-	*((pbg_op_arity_err*)err->_data) = (pbg_op_arity_err) { arity, type };
+	data = (pbg_op_arity_err*)err->_data;
+	data->_arity = arity;
+	data->_type = type;
 }
 
 void pbg_err_state(pbg_error* err, int line, char* file, char* msg)
@@ -273,9 +283,10 @@ void pbg_field_free(pbg_field* field)
  */
 int pbg_store_constant(pbg_expr* e, pbg_field field)
 {
+	int fieldi;
 	if(field._type == PBG_NULL)
 		return 0;
-	int fieldi = 1 + e->_numconst++;
+	fieldi = 1 + e->_numconst++;
 	*pbg_field_get(e, fieldi) = field;
 	return fieldi;
 }
@@ -290,7 +301,8 @@ int pbg_store_constant(pbg_expr* e, pbg_field field)
  */
 int pbg_store_variable(pbg_expr* e, pbg_field field)
 {
-	int fieldi = -(1 + e->_numvars++);
+	int fieldi;
+	fieldi = -(1 + e->_numvars++);
 	*pbg_field_get(e, fieldi) = field;
 	return fieldi;
 }
@@ -408,7 +420,7 @@ pbg_field pbg_make_string(pbg_error* err, char* str, int n)
  * @return 1 if the number of arguments can be legally given to the operator, 
  *         0 if not or if type does not refer to an operator.
  */
-inline int pbg_check_op_arity(pbg_field_type type, int numargs)
+int pbg_check_op_arity(pbg_field_type type, int numargs)
 {
 	int arity = 0;
 	/* Positive arity specifies "exact arity," i.e. the number of arguments 
@@ -442,16 +454,22 @@ int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str,
 		int** fields, int** lengths, int** closings)
 {
 	int fieldi;  /* Index of this field. This is the return value. */
+	int n, strfieldstart;
+	pbg_field_type type;
+	pbg_field* field;
+	
+	int* children;  /* list of children nodes. */
+	int maxc;       /* maximum number of children. */
 	
 	/* Cache length of field for easier referencing. */
-	int n = **lengths;
-	int strfieldstart = **fields;
+	n = **lengths;
+	strfieldstart = **fields;
 	
 	/* Update pointers for next field. */
 	(*fields)++, (*lengths)++;
 	
 	/* Identify type of field. If the type cannot be resolve, throw an error. */
-	pbg_field_type type = pbg_gettype(str + strfieldstart, n);
+	type = pbg_gettype(str + strfieldstart, n);
 	if(type == PBG_NULL) {
 		pbg_err_unknown_type(err, __LINE__, __FILE__, str + strfieldstart, n);
 		return 0;
@@ -459,10 +477,9 @@ int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str,
 	
 	/* This field is an operator. */
 	if(pbg_type_isop(type)) {
-		pbg_field* field;
 		
 		/* Maximum number of children this field has allocated space for. */
-		int maxc = 2;
+		maxc = 2;
 		/* Initialize field and record field index. */
 		fieldi = pbg_store_constant(e, pbg_make_op(err, type, maxc));
 		field = pbg_field_get(e, fieldi);
@@ -479,8 +496,8 @@ int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str,
 			if(childi == 0) return 0;
 			/* Expand array of children if necessary. */
 			if(field->_int == maxc) {
-				maxc *= 2;  // doubling gives amortized O(1) time insertion
-				int* children = (int*)realloc(field->_data, maxc * sizeof(int));
+				maxc *= 2;  /* doubling gives amortized O(1) time insertion */
+				children = (int*)realloc(field->_data, maxc * sizeof(int));
 				if(children == NULL) {
 					pbg_err_alloc(err, __LINE__, __FILE__);
 					return 0;
@@ -498,7 +515,7 @@ int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str,
 		}
 		
 		/* Tighten list of children and save it. */
-		int* children = (int*) realloc(field->_data, field->_int * sizeof(int));
+		children = (int*) realloc(field->_data, field->_int * sizeof(int));
 		if(children == NULL) {
 			pbg_err_alloc(err, __LINE__, __FILE__);
 			return 0;
@@ -548,6 +565,20 @@ int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str,
 
 void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 {
+	int i, c, f, opened;
+	
+	int numfields, numvars, numclosings;
+	int depth, reachedend;
+	int instring, invar;
+	
+	int numconstant, numvariable;
+	int* fields;
+	int* lengths;
+	int* closings;
+	
+	int* lengths_cpy, *closings_cpy, *fields_cpy;
+	int status;
+	
 	/* Always start with a clean error! */
 	pbg_error_init(err);
 	
@@ -564,12 +595,12 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 	/* Verify that all strings & variable names are bounded, that all opening 
 	 * parentheses have friends, and that only a single expression is present. 
 	 * Also count the number of fields, variables, and closings. */
-	int numfields = 0;
-	int numvars = 0;
-	int numclosings = 0;
-	int depth = 0, reachedend = 0;
-	int instring = 0, invar = 0;
-	for(int i = 0; i < n; i++) {
+	numfields = 0;
+	numvars = 0;
+	numclosings = 0;
+	depth = 0, reachedend = 0;
+	instring = 0, invar = 0;
+	for(i = 0; i < n; i++) {
 		if(pbg_iswhitespace(str[i])) continue;
 		/* Count number of variables. */
 		if(str[i] == '[') numvars++;
@@ -633,23 +664,23 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 	}
 	
 	/* Compute sizes of constant and variable arrays. */
-	int numconstant = numfields - numvars;
-	int numvariable = numvars;
+	numconstant = numfields - numvars;
+	numvariable = numvars;
 	
 	/* Allocate space for needed arrays. */
 	/* One extra field is allocated to be set to -1. This helps determine when 
 	 * we've looped through every field. */
-	int* fields = (int*) malloc((numfields+1) * sizeof(int));
+	fields = (int*) malloc((numfields+1) * sizeof(int));
 	if(fields == NULL) {
 		pbg_err_alloc(err, __LINE__, __FILE__);
 		return;
 	}
-	int* lengths = (int*) malloc(numfields * sizeof(int));
+	lengths = (int*) malloc(numfields * sizeof(int));
 	if(lengths == NULL) {
 		pbg_err_alloc(err, __LINE__, __FILE__);
 		return;
 	}
-	int* closings = (int*) malloc(numclosings * sizeof(int));
+	closings = (int*) malloc(numclosings * sizeof(int));
 	if(closings == NULL) {
 		pbg_err_alloc(err, __LINE__, __FILE__);
 		return;
@@ -657,7 +688,7 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 	
 	/* Identify the indices of all fields and closings as well as lengths of 
 	 * the fields. */
-	for(int i = 0, c = 0, f = 0, opened = 0; i < n; i++) {
+	for(i = 0, c = 0, f = 0, opened = 0; i < n; i++) {
 		/* Whitespaces are the enemy. */
 		if(pbg_iswhitespace(str[i])) continue;
 		/* It's a close! */
@@ -716,8 +747,10 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 	}
 	
 	/* Recursively parse the expression string to build the expression tree. */
-	int* lengths_cpy = lengths, *closings_cpy = closings, *fields_cpy = fields;
-	int status = pbg_parse_r(e, err, str, &fields_cpy, 
+	lengths_cpy = lengths;
+	closings_cpy = closings;
+	fields_cpy = fields;
+	status = pbg_parse_r(e, err, str, &fields_cpy, 
 			&lengths_cpy, &closings_cpy);
 	
 	/* If an error occurred, clean up. */
@@ -747,18 +780,23 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 
 int pbg_evaluate_op_not(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	int child0 = ((int*)field->_data)[0];
-	int result = pbg_evaluate_r(e, err, pbg_field_get(e, child0));
+	int child0, result;
+	
+	child0 = ((int*)field->_data)[0];
+	result = pbg_evaluate_r(e, err, pbg_field_get(e, child0));
 	if(result == -1) return -1;  /* Pass error through. */
 	return !result;
 }
 
 int pbg_evaluate_op_and(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	int size = field->_int;
-	for(int i = 0; i < size; i++) {
-		int childi = ((int*)field->_data)[i];
-		int result = pbg_evaluate_r(e, err, pbg_field_get(e, childi));
+	int i, size;
+	int childi, result;
+	
+	size = field->_int;
+	for(i = 0; i < size; i++) {
+		childi = ((int*)field->_data)[i];
+		result = pbg_evaluate_r(e, err, pbg_field_get(e, childi));
 		if(result == -1) return -1;  /* Pass error through. */
 		if(result == 0)  return  0;  /* FALSE! */
 	}
@@ -767,10 +805,13 @@ int pbg_evaluate_op_and(pbg_expr* e, pbg_error* err, pbg_field* field)
 
 int pbg_evaluate_op_or(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	int size = field->_int;
-	for(int i = 0; i < size; i++) {
-		int childi = ((int*)field->_data)[i];
-		int result = pbg_evaluate_r(e, err, pbg_field_get(e, childi));
+	int i, size;
+	int childi, result;
+	
+	size = field->_int;
+	for(i = 0; i < size; i++) {
+		childi = ((int*)field->_data)[i];
+		result = pbg_evaluate_r(e, err, pbg_field_get(e, childi));
 		if(result == -1) return -1;  /* Pass error through. */
 		if(result == 1)  return  1;  /* TRUE! */
 	}
@@ -779,34 +820,41 @@ int pbg_evaluate_op_or(pbg_expr* e, pbg_error* err, pbg_field* field)
 
 int pbg_evaluate_op_exst(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
+	int child0;
+	pbg_field* c0;
 	PBG_UNUSED(err);
-	int child0 = ((int*)field->_data)[0];
-	pbg_field* c0 = pbg_field_get(e, child0);
+	
+	child0 = ((int*)field->_data)[0];
+	c0 = pbg_field_get(e, child0);
 	return c0->_type != PBG_NULL;
 }
 
 int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
+	int i, size;
+	int child0, childi, result;
+	pbg_field* c0, *ci;
 	PBG_UNUSED(err);
+	
 	/* Ensure type and size of all children are identical. */
-	int size = field->_int;
-	int child0 = ((int*)field->_data)[0];
-	pbg_field* c0 = pbg_field_get(e, child0);
+	size = field->_int;
+	child0 = ((int*)field->_data)[0];
+	c0 = pbg_field_get(e, child0);
 	/* We have a bunch of BOOLs! Evaluate them. */
 	if(pbg_type_isbool(c0->_type)) {
-		int res = pbg_evaluate_r(e, err, c0);
-		for(int i = 1; i < size; i++) {
-			int childi = ((int*)field->_data)[i];
-			pbg_field* ci = pbg_field_get(e, childi);
-			if(res != pbg_evaluate_r(e, err, ci))
+		result = pbg_evaluate_r(e, err, c0);
+		for(i = 1; i < size; i++) {
+			childi = ((int*)field->_data)[i];
+			ci = pbg_field_get(e, childi);
+			if(result != pbg_evaluate_r(e, err, ci))
 				return 0;
 		}
 		return 1;
 	/* We don't have a bunch of BOOLs! Do standard equality test. */
 	}else{
-		for(int i = 1; i < size; i++) {
-			int childi = ((int*)field->_data)[i];
-			pbg_field* ci = pbg_field_get(e, childi);
+		for(i = 1; i < size; i++) {
+			childi = ((int*)field->_data)[i];
+			ci = pbg_field_get(e, childi);
 			if(ci->_int != c0->_int || 
 					ci->_type != c0->_type)
 				return 0;  /* FALSE! */
@@ -820,10 +868,14 @@ int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_field* field)
 
 int pbg_evaluate_op_neq(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
+	int child0, child1;
+	pbg_field* c0, *c1;
 	PBG_UNUSED(err);
-	int child0 = ((int*)field->_data)[0], child1 = ((int*)field->_data)[1];
-	pbg_field* c0 = pbg_field_get(e, child0);
-	pbg_field* c1 = pbg_field_get(e, child1);
+	
+	child0 = ((int*)field->_data)[0];
+	child1 = ((int*)field->_data)[1];
+	c0 = pbg_field_get(e, child0);
+	c1 = pbg_field_get(e, child1);
 	/* We have two BOOLs! Evaluate them, and check if they are different. */
 	if(pbg_type_isbool(c0->_type) && pbg_type_isbool(c1->_type))
 		return pbg_evaluate_r(e, err, c0) != pbg_evaluate_r(e, err, c1);
@@ -835,9 +887,13 @@ int pbg_evaluate_op_neq(pbg_expr* e, pbg_error* err, pbg_field* field)
 
 int pbg_evaluate_op_lt(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	int child0 = ((int*)field->_data)[0], child1 = ((int*)field->_data)[1];
-	pbg_field* c0 = pbg_field_get(e, child0);
-	pbg_field* c1 = pbg_field_get(e, child1);
+	int child0, child1;
+	pbg_field* c0, *c1;
+	
+	child0 = ((int*)field->_data)[0];
+	child1 = ((int*)field->_data)[1];
+	c0 = pbg_field_get(e, child0);
+	c1 = pbg_field_get(e, child1);
 	/* Both are NUMBERs. */
 	if(c0->_type == PBG_LT_NUMBER &&
 			c1->_type == PBG_LT_NUMBER)
@@ -859,9 +915,13 @@ int pbg_evaluate_op_lt(pbg_expr* e, pbg_error* err, pbg_field* field)
 
 int pbg_evaluate_op_gt(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	int child0 = ((int*)field->_data)[0], child1 = ((int*)field->_data)[1];
-	pbg_field* c0 = pbg_field_get(e, child0);
-	pbg_field* c1 = pbg_field_get(e, child1);
+	int child0, child1;
+	pbg_field* c0, *c1;
+	
+	child0 = ((int*)field->_data)[0];
+	child1 = ((int*)field->_data)[1];
+	c0 = pbg_field_get(e, child0);
+	c1 = pbg_field_get(e, child1);
 	/* Both are NUMBERs. */
 	if(c0->_type == PBG_LT_NUMBER &&
 			c1->_type == PBG_LT_NUMBER)
@@ -883,9 +943,13 @@ int pbg_evaluate_op_gt(pbg_expr* e, pbg_error* err, pbg_field* field)
 
 int pbg_evaluate_op_lte(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	int child0 = ((int*)field->_data)[0], child1 = ((int*)field->_data)[1];
-	pbg_field* c0 = pbg_field_get(e, child0);
-	pbg_field* c1 = pbg_field_get(e, child1);
+	int child0, child1;
+	pbg_field* c0, *c1;
+	
+	child0 = ((int*)field->_data)[0];
+	child1 = ((int*)field->_data)[1];
+	c0 = pbg_field_get(e, child0);
+	c1 = pbg_field_get(e, child1);
 	/* Both are NUMBERs. */
 	if(c0->_type == PBG_LT_NUMBER &&
 			c1->_type == PBG_LT_NUMBER)
@@ -907,9 +971,13 @@ int pbg_evaluate_op_lte(pbg_expr* e, pbg_error* err, pbg_field* field)
 
 int pbg_evaluate_op_gte(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	int child0 = ((int*)field->_data)[0], child1 = ((int*)field->_data)[1];
-	pbg_field* c0 = pbg_field_get(e, child0);
-	pbg_field* c1 = pbg_field_get(e, child1);
+	int child0, child1;
+	pbg_field* c0, *c1;
+	
+	child0 = ((int*)field->_data)[0];
+	child1 = ((int*)field->_data)[1];
+	c0 = pbg_field_get(e, child0);
+	c1 = pbg_field_get(e, child1);
 	/* Both are NUMBERs. */
 	if(c0->_type == PBG_LT_NUMBER &&
 			c1->_type == PBG_LT_NUMBER)
@@ -931,19 +999,23 @@ int pbg_evaluate_op_gte(pbg_expr* e, pbg_error* err, pbg_field* field)
 
 int pbg_evaluate_op_typeof(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	int size = field->_int;
-	int child0 = ((int*)field->_data)[0];
-	pbg_field* c0 = pbg_field_get(e, child0);
-	pbg_field_type type = c0->_type;
+	int i, size, child0, childi;
+	pbg_field* c0, *ci;
+	pbg_field_type type;
+	
+	size = field->_int;
+	child0 = ((int*)field->_data)[0];
+	c0 = pbg_field_get(e, child0);
+	type = c0->_type;
 	/* Ensure the first argument is a type literal. */
 	if(type < PBG_MIN_LT_TP || type > PBG_MAX_LT_TP) {
 		pbg_err_op_arg_type(err, __LINE__, __FILE__);
 		return -1;
 	}
 	/* Verify types of all trailing arguments. */
-	for(int i = 1; i < size; i++) {
-		int childi = ((int*)field->_data)[i];
-		pbg_field* ci = pbg_field_get(e, childi);
+	for(i = 1; i < size; i++) {
+		childi = ((int*)field->_data)[i];
+		ci = pbg_field_get(e, childi);
 		if(type == PBG_LT_TP_BOOL && !pbg_type_isbool(ci->_type))
 			return 0;  /* FALSE */
 		if(type == PBG_LT_TP_DATE && ci->_type != PBG_LT_DATE)
@@ -989,35 +1061,39 @@ int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_field* field)
 
 int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_field (*dict)(char*, int))
 {
+	int i, result;
+	pbg_field* newvars;
+	pbg_field* var;
+	pbg_field* oldvars;
+	
 	/* Always start with a clean error! */
 	pbg_error_init(err);
 	
 	/* Variable resolution. Lookup every variable in provided dictionary. */
-	pbg_field* variables;
-	variables = (pbg_field*) malloc(e->_numvars * sizeof(pbg_field));
-	if(variables == NULL) {
+	newvars = (pbg_field*) malloc(e->_numvars * sizeof(pbg_field));
+	if(newvars == NULL) {
 		pbg_err_alloc(err, __LINE__, __FILE__);
 		return -1;
 	}
-	for(int i = 0; i < e->_numvars; i++) {
-		pbg_field* var = e->_variables+i;
-		variables[i] = dict((char*)(var->_data), var->_int);
+	for(i = 0; i < e->_numvars; i++) {
+		var = e->_variables+i;
+		newvars[i] = dict((char*)(var->_data), var->_int);
 	}
 	
 	/* Swap out variable literals with dictionary equivalents. */
-	pbg_field* old = e->_variables;
-	e->_variables = variables;
+	oldvars = e->_variables;
+	e->_variables = newvars;
 	
 	/* Evaluate expression! */
-	int result = pbg_evaluate_r(e, err, e->_constants);
+	result = pbg_evaluate_r(e, err, e->_constants);
 	
 	/* Restore old variable literal array. */
-	e->_variables = old;
+	e->_variables = oldvars;
 	
 	/* Clean up malloc'd memory. */
-	for(int i = 0; i < e->_numvars; i++)
-		pbg_field_free(variables+i);
-	free(variables);
+	for(i = 0; i < e->_numvars; i++)
+		pbg_field_free(newvars+i);
+	free(newvars);
 	
 	/* Done! */
 	return result;
@@ -1041,12 +1117,14 @@ void pbg_error_init(pbg_error* err)
 
 void pbg_free(pbg_expr* e)
 {
+	int i;
+	
 	/* Free individual constant fields. Some do not have _data malloc'd. */
-	for(int i = e->_numconst-1; i >= 0; i--)
+	for(i = e->_numconst-1; i >= 0; i--)
 		pbg_field_free(e->_constants+i);
 	
 	/* Free individual variable fields. All have _data malloc'd. */
-	for(int i = 0; i < e->_numvars; i++)
+	for(i = 0; i < e->_numvars; i++)
 		pbg_field_free(e->_variables+i);
 	
 	/* Free internal field arrays. */
@@ -1213,7 +1291,10 @@ int pbg_isfalse(char* str, int n)
 
 int pbg_isnumber(char* str, int n)
 {
-	int i = 0;
+	int i;
+	
+	/* Start at the beginning of the string. */
+	i = 0;
 	
 	/* Check if negative or positive */
 	if(str[i] == '-' || str[i] == '+') i++;
@@ -1289,7 +1370,7 @@ int pbg_isvar(char* str, int n)
 
 int pbg_isstring(char* str, int n)
 {
-	// TODO ensure I don't contain any unescaped single quotes!
+	/* TODO ensure I don't contain any unescaped single quotes! */
 	return str[0] == '\'' && str[n-1] == '\'';
 }
 
@@ -1310,7 +1391,7 @@ void pbg_todate(pbg_lt_date* ptr, char* str, int n)
 	ptr->_YYYY = (str[0]-'0')*1000 + (str[1]-'0')*100 + (str[2]-'0')*10 + (str[3]-'0');
 	ptr->_MM = (str[5]-'0')*10 + (str[6]-'0');
 	ptr->_DD = (str[8]-'0')*10 + (str[9]-'0');
-	// TODO enforce ranges on months and days
+	/* TODO enforce ranges on months and days */
 }
 
 /**
@@ -1348,10 +1429,10 @@ int pbg_type_isop(pbg_field_type type)
  * Checks if the given character is a digit.
  * @param c  Character to check.
  */
-inline int pbg_isdigit(char c) { return c >= '0' && c <= '9'; }
+int pbg_isdigit(char c) { return c >= '0' && c <= '9'; }
 
 /**
  * Checks if the given character is whitespace.
  * @param c  Character to check.
  */
-inline int pbg_iswhitespace(char c) { return c==' ' || c=='\t' || c=='\n'; }
+int pbg_iswhitespace(char c) { return c==' ' || c=='\t' || c=='\n'; }

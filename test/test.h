@@ -12,6 +12,12 @@
 #define TRUE   1
 #define ERROR  2
 
+	pbg_error_type  _type;  /* Error type. */
+	int             _line;  /* Line of file where error occurred. */
+	char*           _file;  /* File in which error occurred. */
+	int             _int;   /* Type determines what this is used for! */
+	void*           _data;  /* Data to be included with error report. */
+
 /**
  * Prints the given error in a human-readable format.
  * @param err  Error to translate.
@@ -19,7 +25,7 @@
 void pbg_err_print(pbg_error* err);
 
 #define check(test) do { int _res = (test); if(_res != PBG_TEST_PASS) { _numfail++; printf("-failed: %s:%d\n", __FILE__, __LINE__); pbg_err_print(&err); } err._type=PBG_ERR_NONE; pbg_error_free(&err); } while(0)
-#define init_test() pbg_error err = (pbg_error) { PBG_ERR_NONE, 0, NULL, 0, NULL }; int _numfail = 0;
+#define init_test() pbg_error err; int _numfail; err._type = PBG_ERR_NONE; err._line = 0; err._file = NULL; err._int = 0; err._data = NULL; _numfail = 0;
 #define end_test() if(err._type != PBG_ERR_NONE) pbg_error_free(&err); return _numfail
 #define summ_test(name,tester) do { int _numfail = (tester); if(_numfail != 0) printf("%s\tfailed %d tests!\n", (name), _numfail); else printf("%s\tpassed!\n", (name)); } while(0)
 

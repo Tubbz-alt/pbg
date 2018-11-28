@@ -22,42 +22,42 @@
  * Types of PBG fields.
  */
 typedef enum {
-	PBG_NULL,  // NULL: Unknown field type
+	PBG_NULL,  /* NULL: Unknown field type */
 	
 	/* Type literals. */
 	PBG_MIN_LT_TP,
-	PBG_LT_TP_DATE,    // DATE TYPE literal
-	PBG_LT_TP_BOOL,    // TRUE/FALSE TYPE literal
-	PBG_LT_TP_NUMBER,  // NUMBER TYPE literal
-	PBG_LT_TP_STRING,  // STRING TYPE literal
-	// Add more TYPE literals here.
+	PBG_LT_TP_DATE,    /* DATE TYPE literal */
+	PBG_LT_TP_BOOL,    /* TRUE/FALSE TYPE literal */
+	PBG_LT_TP_NUMBER,  /* NUMBER TYPE literal */
+	PBG_LT_TP_STRING,  /* STRING TYPE literal */
+	/* Add more TYPE literals here. */
 	PBG_MAX_LT_TP,
 	
 	/* Literals. */
 	PBG_MIN_LT,
-	PBG_LT_TRUE,    // TRUE literal
-	PBG_LT_FALSE,   // FALSE literal
-	PBG_LT_NUMBER,  // NUMBER literal
-	PBG_LT_STRING,  // STRING literal
-	PBG_LT_DATE,    // DATE literal
-	PBG_LT_VAR,     // VARiable literal
-	// Add more literals here.
+	PBG_LT_TRUE,    /* TRUE literal */
+	PBG_LT_FALSE,   /* FALSE literal */
+	PBG_LT_NUMBER,  /* NUMBER literal */
+	PBG_LT_STRING,  /* STRING literal */
+	PBG_LT_DATE,    /* DATE literal */
+	PBG_LT_VAR,     /* VARiable literal */
+	/* Add more literals here. */
 	PBG_MAX_LT,
 	
 	/* Operators. */
 	PBG_MIN_OP,
-	PBG_OP_NOT,   // !   NOT
-	PBG_OP_AND,   // &   AND
-	PBG_OP_OR,    // |   OR
-	PBG_OP_EQ,    // =   EQUAL
-	PBG_OP_LT,    // <   LESS THAN
-	PBG_OP_GT,    // >   GREATER THAN
-	PBG_OP_EXST,  // ?   EXISTS
-	PBG_OP_NEQ,   // !=  NOT EQUAL
-	PBG_OP_LTE,   // <=  LESS THAN OR EQUAL TO
-	PBG_OP_GTE,   // >=  GREATER THAN OR EQUAL TO
-	PBG_OP_TYPE,  // @   TYPE OF
-	// Add more operators here.
+	PBG_OP_NOT,   /* !   NOT */
+	PBG_OP_AND,   /* &   AND */
+	PBG_OP_OR,    /* |   OR */
+	PBG_OP_EQ,    /* =   EQUAL */
+	PBG_OP_LT,    /* <   LESS THAN */
+	PBG_OP_GT,    /* >   GREATER THAN */
+	PBG_OP_EXST,  /* ?   EXISTS */
+	PBG_OP_NEQ,   /* !=  NOT EQUAL */
+	PBG_OP_LTE,   /* <=  LESS THAN OR EQUAL TO */
+	PBG_OP_GTE,   /* >=  GREATER THAN OR EQUAL TO */
+	PBG_OP_TYPE,  /* @   TYPE OF */
+	/* Add more operators here. */
 	PBG_MAX_OP
 } pbg_field_type;
 
