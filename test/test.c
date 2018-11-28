@@ -79,6 +79,8 @@ int suite_evaluate()
 	check(test_evaluate(&err, "(! (= 10 10))", dict, FALSE));
 	check(test_evaluate(&err, "(! (= 9 10))", dict, TRUE));
 	check(test_evaluate(&err, "(! (! (= 9 10)))", dict, FALSE));
+	check(test_evaluate(&err, "(! [1])", dict, ERROR));
+	check(test_evaluate(&err, "(! [0])", dict, ERROR));
 	/* AND */
 	check(test_evaluate(&err, "(& TRUE TRUE)", dict, TRUE));
 	check(test_evaluate(&err, "(& TRUE FALSE)", dict, FALSE));
@@ -87,6 +89,10 @@ int suite_evaluate()
 	check(test_evaluate(&err, "(& TRUE TRUE TRUE TRUE TRUE)", dict, TRUE));
 	check(test_evaluate(&err, "(& TRUE TRUE TRUE FALSE TRUE)", dict, FALSE));
 	check(test_evaluate(&err, "(& (& FALSE TRUE) TRUE)", dict, FALSE));
+	check(test_evaluate(&err, "(& [1] [1])", dict, ERROR));
+	check(test_evaluate(&err, "(& [0] [1])", dict, ERROR));
+	check(test_evaluate(&err, "(& [1] [0])", dict, ERROR));
+	check(test_evaluate(&err, "(& [0] [0])", dict, ERROR));
 	/* OR */
 	check(test_evaluate(&err, "(| TRUE TRUE)", dict, TRUE));
 	check(test_evaluate(&err, "(| TRUE TRUE)", dict, TRUE));
@@ -95,6 +101,10 @@ int suite_evaluate()
 	check(test_evaluate(&err, "(| FALSE FALSE)", dict, FALSE));
 	check(test_evaluate(&err, "(| FALSE FALSE FALSE FALSE FALSE)", dict, FALSE));
 	check(test_evaluate(&err, "(| FALSE TRUE FALSE FALSE FALSE)", dict, TRUE));
+	check(test_evaluate(&err, "(| [1] [1])", dict, ERROR));
+	check(test_evaluate(&err, "(| [0] [1])", dict, ERROR));
+	check(test_evaluate(&err, "(| [1] [0])", dict, ERROR));
+	check(test_evaluate(&err, "(| [0] [0])", dict, ERROR));
 	/* EXST */
 	check(test_evaluate(&err, "(? [c])", dict, TRUE));
 	check(test_evaluate(&err, "(? [d])", dict, FALSE));
@@ -130,6 +140,10 @@ int suite_evaluate()
 	check(test_evaluate(&err, "(= TRUE FALSE)", dict, FALSE));
 	check(test_evaluate(&err, "(= FALSE TRUE)", dict, FALSE));
 	check(test_evaluate(&err, "(= FALSE FALSE)", dict, TRUE));
+	check(test_evaluate(&err, "(= [1] [1])", dict, TRUE));
+	check(test_evaluate(&err, "(= [1] [0])", dict, ERROR));
+	check(test_evaluate(&err, "(= [0] [1])", dict, ERROR));
+	check(test_evaluate(&err, "(= [0] [0])", dict, ERROR));
 	/* NEQ */
 	check(test_evaluate(&err, "(!= 10 10)", dict, FALSE));
 	check(test_evaluate(&err, "(!= 9 10)", dict, TRUE));
@@ -156,6 +170,10 @@ int suite_evaluate()
 	check(test_evaluate(&err, "(!= TRUE FALSE)", dict, TRUE));
 	check(test_evaluate(&err, "(!= FALSE TRUE)", dict, TRUE));
 	check(test_evaluate(&err, "(!= FALSE FALSE)", dict, FALSE));
+	check(test_evaluate(&err, "(!= [1] [1])", dict, FALSE));
+	check(test_evaluate(&err, "(!= [1] [0])", dict, ERROR));
+	check(test_evaluate(&err, "(!= [0] [1])", dict, ERROR));
+	check(test_evaluate(&err, "(!= [0] [0])", dict, ERROR));
 	/* LESS THAN */
 	check(test_evaluate(&err, "(< 2 3)", dict, TRUE));
 	check(test_evaluate(&err, "(< 3 3)", dict, FALSE));
@@ -172,6 +190,10 @@ int suite_evaluate()
 	check(test_evaluate(&err, "(< 2018-10-12 2018-09-12)", dict, FALSE));
 	check(test_evaluate(&err, "(< 2017-10-12 2018-10-12)", dict, TRUE));
 	check(test_evaluate(&err, "(< 2018-10-12 2017-10-12)", dict, FALSE));
+	check(test_evaluate(&err, "(< [1] [1])", dict, FALSE));
+	check(test_evaluate(&err, "(< [1] [0])", dict, ERROR));
+	check(test_evaluate(&err, "(< [0] [1])", dict, ERROR));
+	check(test_evaluate(&err, "(< [0] [0])", dict, ERROR));
 	/* GREATER THAN */
 	check(test_evaluate(&err, "(> 3 2)", dict, TRUE));
 	check(test_evaluate(&err, "(> 3 3)", dict, FALSE));
@@ -187,6 +209,10 @@ int suite_evaluate()
 	check(test_evaluate(&err, "(> 2018-10-12 2018-09-12)", dict, TRUE));
 	check(test_evaluate(&err, "(> 2017-10-12 2018-10-12)", dict, FALSE));
 	check(test_evaluate(&err, "(> 2018-10-12 2017-10-12)", dict, TRUE));
+	check(test_evaluate(&err, "(> [1] [1])", dict, FALSE));
+	check(test_evaluate(&err, "(> [1] [0])", dict, ERROR));
+	check(test_evaluate(&err, "(> [0] [1])", dict, ERROR));
+	check(test_evaluate(&err, "(> [0] [0])", dict, ERROR));
 	/* LESS THAN OR EQUAL */
 	check(test_evaluate(&err, "(<= 2 3)", dict, TRUE));
 	check(test_evaluate(&err, "(<= 3 3)", dict, TRUE));
@@ -203,6 +229,10 @@ int suite_evaluate()
 	check(test_evaluate(&err, "(<= 2018-10-12 2018-09-12)", dict, FALSE));
 	check(test_evaluate(&err, "(<= 2017-10-12 2018-10-12)", dict, TRUE));
 	check(test_evaluate(&err, "(<= 2018-10-12 2017-10-12)", dict, FALSE));
+	check(test_evaluate(&err, "(<= [1] [1])", dict, TRUE));
+	check(test_evaluate(&err, "(<= [1] [0])", dict, ERROR));
+	check(test_evaluate(&err, "(<= [0] [1])", dict, ERROR));
+	check(test_evaluate(&err, "(<= [0] [0])", dict, ERROR));
 	/* GREATER THAN OR EQUAL */
 	check(test_evaluate(&err, "(>= 3 2)", dict, TRUE));
 	check(test_evaluate(&err, "(>= 3 3)", dict, TRUE));
@@ -219,6 +249,10 @@ int suite_evaluate()
 	check(test_evaluate(&err, "(>= 2018-10-12 2018-09-12)", dict, TRUE));
 	check(test_evaluate(&err, "(>= 2017-10-12 2018-10-12)", dict, FALSE));
 	check(test_evaluate(&err, "(>= 2018-10-12 2017-10-12)", dict, TRUE));
+	check(test_evaluate(&err, "(>= [1] [1])", dict, TRUE));
+	check(test_evaluate(&err, "(>= [1] [0])", dict, ERROR));
+	check(test_evaluate(&err, "(>= [0] [1])", dict, ERROR));
+	check(test_evaluate(&err, "(>= [0] [0])", dict, ERROR));
 	/* TYPE */
 	check(test_evaluate(&err, "(@ DATE 2018-10-12)", dict, TRUE));
 	check(test_evaluate(&err, "(@ DATE [a])", dict, FALSE));

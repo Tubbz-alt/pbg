@@ -52,7 +52,7 @@ void pbg_err_unknown_type(pbg_error* err, int line, char* file, char* field, int
 void pbg_err_syntax(pbg_error* err, int line, char* file, char* str, int i, char* msg);
 void pbg_err_op_arity(pbg_error* err, int line, char* file, pbg_field_type type, int arity);
 void pbg_err_state(pbg_error* err, int line, char* file, char* msg);
-void pbg_err_op_arg_type(pbg_error* err, int line, char* file);
+void pbg_err_op_arg_type(pbg_error* err, int line, char* file, char* msg);
 char* pbg_error_str(pbg_error_type type);
 char* pbg_field_type_str(pbg_field_type type);
  
@@ -131,6 +131,7 @@ void pbg_error_print(pbg_error* err)
 	printf("error %s at %s:%d", 
 			pbg_error_str(err->_type), err->_file, err->_line);
 	switch(err->_type) {
+		case PBG_ERR_OP_ARG_TYPE:
 		case PBG_ERR_STATE:
 			printf(": %s", (char*) err->_data);
 			break;
@@ -226,13 +227,13 @@ void pbg_err_state(pbg_error* err, int line, char* file, char* msg)
 	err->_data = msg;
 }
 
-void pbg_err_op_arg_type(pbg_error* err, int line, char* file)
+void pbg_err_op_arg_type(pbg_error* err, int line, char* file, char* msg)
 {
 	err->_type = PBG_ERR_OP_ARG_TYPE;
 	err->_line = line;
 	err->_file = file;
 	err->_int = 0;
-	err->_data = NULL;
+	err->_data = msg;
 }
 
 void pbg_error_free(pbg_error* err)
@@ -840,12 +841,22 @@ int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_field* field)
 	size = field->_int;
 	child0 = ((int*)field->_data)[0];
 	c0 = pbg_field_get(e, child0);
+	if(c0->_type == PBG_NULL) {
+		pbg_err_op_arg_type(err, __LINE__, __FILE__, 
+				"NULL input given to EQ operator.");
+		return -1;
+	}
 	/* We have a bunch of BOOLs! Evaluate them. */
 	if(pbg_type_isbool(c0->_type)) {
 		result = pbg_evaluate_r(e, err, c0);
 		for(i = 1; i < size; i++) {
 			childi = ((int*)field->_data)[i];
 			ci = pbg_field_get(e, childi);
+			if(ci->_type == PBG_NULL) {
+				pbg_err_op_arg_type(err, __LINE__, __FILE__, 
+						"NULL input given to EQ operator.");
+				return -1;
+			}
 			if(result != pbg_evaluate_r(e, err, ci))
 				return 0;
 		}
@@ -855,6 +866,11 @@ int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_field* field)
 		for(i = 1; i < size; i++) {
 			childi = ((int*)field->_data)[i];
 			ci = pbg_field_get(e, childi);
+			if(ci->_type == PBG_NULL) {
+				pbg_err_op_arg_type(err, __LINE__, __FILE__, 
+						"NULL input given to EQ operator.");
+				return -1;
+			}
 			if(ci->_int != c0->_int || 
 					ci->_type != c0->_type)
 				return 0;  /* FALSE! */
@@ -876,6 +892,11 @@ int pbg_evaluate_op_neq(pbg_expr* e, pbg_error* err, pbg_field* field)
 	child1 = ((int*)field->_data)[1];
 	c0 = pbg_field_get(e, child0);
 	c1 = pbg_field_get(e, child1);
+	if(c0->_type == PBG_NULL || c1->_type == PBG_NULL) {
+		pbg_err_op_arg_type(err, __LINE__, __FILE__, 
+				"NULL input given to NEQ operator.");
+		return -1;
+	}
 	/* We have two BOOLs! Evaluate them, and check if they are different. */
 	if(pbg_type_isbool(c0->_type) && pbg_type_isbool(c1->_type))
 		return pbg_evaluate_r(e, err, c0) != pbg_evaluate_r(e, err, c1);
@@ -894,6 +915,11 @@ int pbg_evaluate_op_lt(pbg_expr* e, pbg_error* err, pbg_field* field)
 	child1 = ((int*)field->_data)[1];
 	c0 = pbg_field_get(e, child0);
 	c1 = pbg_field_get(e, child1);
+	if(c0->_type == PBG_NULL || c1->_type == PBG_NULL) {
+		pbg_err_op_arg_type(err, __LINE__, __FILE__, 
+				"NULL input given to LT operator.");
+		return -1;
+	}
 	/* Both are NUMBERs. */
 	if(c0->_type == PBG_LT_NUMBER &&
 			c1->_type == PBG_LT_NUMBER)
@@ -909,7 +935,8 @@ int pbg_evaluate_op_lt(pbg_expr* e, pbg_error* err, pbg_field* field)
 	/* Both are BOOLs. */
 	if(pbg_type_isbool(c0->_type) && pbg_type_isbool(c1->_type))
 		return pbg_evaluate_r(e, err, c0) < pbg_evaluate_r(e, err, c1);
-	pbg_err_op_arg_type(err, __LINE__, __FILE__);
+	pbg_err_op_arg_type(err, __LINE__, __FILE__, 
+			"Unknown input type to LT operator");
 	return -1;
 }
 
@@ -922,6 +949,11 @@ int pbg_evaluate_op_gt(pbg_expr* e, pbg_error* err, pbg_field* field)
 	child1 = ((int*)field->_data)[1];
 	c0 = pbg_field_get(e, child0);
 	c1 = pbg_field_get(e, child1);
+	if(c0->_type == PBG_NULL || c1->_type == PBG_NULL) {
+		pbg_err_op_arg_type(err, __LINE__, __FILE__, 
+				"NULL input given to GT operator.");
+		return -1;
+	}
 	/* Both are NUMBERs. */
 	if(c0->_type == PBG_LT_NUMBER &&
 			c1->_type == PBG_LT_NUMBER)
@@ -937,7 +969,8 @@ int pbg_evaluate_op_gt(pbg_expr* e, pbg_error* err, pbg_field* field)
 	/* Both are BOOLs. */
 	if(pbg_type_isbool(c0->_type) && pbg_type_isbool(c1->_type))
 		return pbg_evaluate_r(e, err, c0) > pbg_evaluate_r(e, err, c1);
-	pbg_err_op_arg_type(err, __LINE__, __FILE__);
+	pbg_err_op_arg_type(err, __LINE__, __FILE__, 
+			"Unknown input type to GT operator");
 	return -1;
 }
 
@@ -950,6 +983,11 @@ int pbg_evaluate_op_lte(pbg_expr* e, pbg_error* err, pbg_field* field)
 	child1 = ((int*)field->_data)[1];
 	c0 = pbg_field_get(e, child0);
 	c1 = pbg_field_get(e, child1);
+	if(c0->_type == PBG_NULL || c1->_type == PBG_NULL) {
+		pbg_err_op_arg_type(err, __LINE__, __FILE__, 
+				"NULL input given to LTE operator.");
+		return -1;
+	}
 	/* Both are NUMBERs. */
 	if(c0->_type == PBG_LT_NUMBER &&
 			c1->_type == PBG_LT_NUMBER)
@@ -965,7 +1003,8 @@ int pbg_evaluate_op_lte(pbg_expr* e, pbg_error* err, pbg_field* field)
 	/* Both are BOOLs. */
 	if(pbg_type_isbool(c0->_type) && pbg_type_isbool(c1->_type))
 		return pbg_evaluate_r(e, err, c0) <= pbg_evaluate_r(e, err, c1);
-	pbg_err_op_arg_type(err, __LINE__, __FILE__);
+	pbg_err_op_arg_type(err, __LINE__, __FILE__, 
+			"Unknown input type to LTE operator");
 	return -1;
 }
 
@@ -978,6 +1017,11 @@ int pbg_evaluate_op_gte(pbg_expr* e, pbg_error* err, pbg_field* field)
 	child1 = ((int*)field->_data)[1];
 	c0 = pbg_field_get(e, child0);
 	c1 = pbg_field_get(e, child1);
+	if(c0->_type == PBG_NULL || c1->_type == PBG_NULL) {
+		pbg_err_op_arg_type(err, __LINE__, __FILE__, 
+				"NULL input given to GTE operator.");
+		return -1;
+	}
 	/* Both are NUMBERs. */
 	if(c0->_type == PBG_LT_NUMBER &&
 			c1->_type == PBG_LT_NUMBER)
@@ -993,7 +1037,8 @@ int pbg_evaluate_op_gte(pbg_expr* e, pbg_error* err, pbg_field* field)
 	/* Both are BOOLs. */
 	if(pbg_type_isbool(c0->_type) && pbg_type_isbool(c1->_type))
 		return pbg_evaluate_r(e, err, c0) >= pbg_evaluate_r(e, err, c1);
-	pbg_err_op_arg_type(err, __LINE__, __FILE__);
+	pbg_err_op_arg_type(err, __LINE__, __FILE__, 
+			"Unknown input type to GTE operator");
 	return -1;
 }
 
@@ -1009,7 +1054,8 @@ int pbg_evaluate_op_typeof(pbg_expr* e, pbg_error* err, pbg_field* field)
 	type = c0->_type;
 	/* Ensure the first argument is a type literal. */
 	if(type < PBG_MIN_LT_TP || type > PBG_MAX_LT_TP) {
-		pbg_err_op_arg_type(err, __LINE__, __FILE__);
+		pbg_err_op_arg_type(err, __LINE__, __FILE__, 
+				"First input to TYPE operator must be a type literal.");
 		return -1;
 	}
 	/* Verify types of all trailing arguments. */
