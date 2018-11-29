@@ -28,7 +28,7 @@ pbg (the C library) is designed to be **fast** (quick compilation and evaluation
 
 - simple, powerful grammar
 - fast compilation and evaluation
-- compatible with C99
+- compatible with C89
 - no dependencies except libc
 - small memory footprint
 
