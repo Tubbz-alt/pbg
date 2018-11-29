@@ -12,7 +12,6 @@ int suite_gettype(void);
 /* Run and summarize test suites. */
 int main(void)
 {
-	summ_test("pbg_gettype", suite_gettype());
 	summ_test("pbg_evaluate", suite_evaluate());
 	return 0;
 }
@@ -334,89 +333,11 @@ int suite_evaluate()
 }
 
 
-/* Tests for pbg_gettype. */
-int suite_gettype()
-{
-	init_test();
-	
-	/* operators */
-	check(test_gettype("!", PBG_OP_NOT));
-	check(test_gettype("&", PBG_OP_AND));
-	check(test_gettype("|", PBG_OP_OR));
-	check(test_gettype("=", PBG_OP_EQ));
-	check(test_gettype("<", PBG_OP_LT));
-	check(test_gettype(">", PBG_OP_GT));
-	check(test_gettype("?", PBG_OP_EXST));
-	check(test_gettype("!=", PBG_OP_NEQ));
-	check(test_gettype("<=", PBG_OP_LTE));
-	check(test_gettype(">=", PBG_OP_GTE));
-	check(test_gettype("!!", PBG_NULL));
-	check(test_gettype("&&", PBG_NULL));
-	check(test_gettype("||", PBG_NULL));
-	check(test_gettype("==", PBG_NULL));
-	check(test_gettype("<<", PBG_NULL));
-	check(test_gettype(">>", PBG_NULL));
-	check(test_gettype("??", PBG_NULL));
-	check(test_gettype("!==", PBG_NULL));
-	check(test_gettype("<==", PBG_NULL));
-	check(test_gettype(">==", PBG_NULL));
-	/* pbg_istrue */
-	check(test_gettype("TRUE", PBG_LT_TRUE));
-	check(test_gettype(" TRUE", PBG_NULL));
-	check(test_gettype(" TRUE ", PBG_NULL));
-	check(test_gettype(" TR UE ", PBG_NULL));
-	check(test_gettype("true", PBG_NULL));
-	check(test_gettype("tRue", PBG_NULL));
-	/* pbg_isfalse */
-	check(test_gettype("FALSE", PBG_LT_FALSE));
-	check(test_gettype(" FALSE", PBG_NULL));
-	check(test_gettype(" FALSE ", PBG_NULL));
-	check(test_gettype(" FAL SE ", PBG_NULL));
-	check(test_gettype("false", PBG_NULL));
-	check(test_gettype("fAlse", PBG_NULL));
-	/* pbg_isnumber */
-	check(test_gettype("3.14e1", PBG_LT_NUMBER));
-	check(test_gettype("3", PBG_LT_NUMBER));
-	check(test_gettype("03", PBG_NULL));
-	check(test_gettype("3.", PBG_NULL));
-	check(test_gettype("3.0", PBG_LT_NUMBER));
-	check(test_gettype(".", PBG_NULL));
-	check(test_gettype("0", PBG_LT_NUMBER));
-	check(test_gettype("0.123a45", PBG_NULL));
-	check(test_gettype("0.0.1", PBG_NULL));
-	check(test_gettype("0.0", PBG_LT_NUMBER));
-	check(test_gettype("e10", PBG_NULL));
-	check(test_gettype(".0", PBG_NULL));
-	check(test_gettype("0e10", PBG_LT_NUMBER));
-	check(test_gettype("0e", PBG_NULL));
-	/* pbg_isstring */
-	check(test_gettype("'hi'", PBG_LT_STRING));
-	check(test_gettype("''", PBG_LT_STRING));
-	check(test_gettype("','", PBG_LT_STRING));
-	check(test_gettype("'\''", PBG_LT_STRING));
-	check(test_gettype("'unclosed", PBG_NULL));
-	check(test_gettype("unclosed'", PBG_NULL));
-	check(test_gettype("noquotes", PBG_NULL));
-	check(test_gettype("'ab\\'d'", PBG_LT_STRING));
-	
-	end_test();
-}
-
-
 /**************************
  *                        *
  * UNIT TESTING FUNCTIONS *
  *                        *
  **************************/
-
-int test_gettype(char* str, pbg_field_type expect)
-{
-	/* Translate given string to type. */
-	pbg_field_type output = pbg_gettype(str, strlen(str));
-	/* Did we pass?? */
-	return (output == expect) ? PBG_TEST_PASS : PBG_TEST_FAIL;
-}
-
 
 int test_evaluate(pbg_error* err, char* str, pbg_field (*dict)(char*,int), int expect)
 {

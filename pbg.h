@@ -201,22 +201,13 @@ pbg_field pbg_make_number(pbg_error* err, char* str, int n);
  */
 pbg_field pbg_make_string(pbg_error* err, char* str, int n);
 
-/** 
- * Identifies the PBG expression type of the given string. This function works
- * for both literal and operator types.
- * @param str String to parse.
- * @param n   Length of the string.
- * @return the type associated with the given string, PBG_NULL if none.
- */
-pbg_field_type pbg_gettype(char* str, int n);
-
 
 /***************
  *             *
  *   ERRORS    *
  *             *
  ***************/
- 
+
 /**
  * Checks if the given error has been initialized with error data.
  * @param err  Error to check.

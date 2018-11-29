@@ -47,6 +47,7 @@ typedef struct {
  ****************************/
 
 /* ERROR MANAGEMENT */
+void pbg_err_init(pbg_error* err, pbg_error_type type, int line, char* file, int size, void* data);
 void pbg_err_alloc(pbg_error* err, int line, char* file);
 void pbg_err_unknown_type(pbg_error* err, int line, char* file, char* field, int n);
 void pbg_err_syntax(pbg_error* err, int line, char* file, char* str, int i, char* msg);
@@ -63,6 +64,7 @@ int pbg_store_constant(pbg_expr* e, pbg_field field);
 int pbg_store_variable(pbg_expr* e, pbg_field field);
 
 /* FIELD CREATION TOOLKIT */
+pbg_field pbg_make_init(pbg_field_type type, int size, void* data);
 pbg_field pbg_make_op(pbg_error* err, pbg_field_type type, int numchildren);
 pbg_field pbg_make_var(pbg_error* err, char* str, int n);
 
@@ -86,9 +88,10 @@ int pbg_evaluate_op_gte(pbg_expr* e, pbg_error* err, pbg_field* field);
 int pbg_evaluate_op_typeof(pbg_expr* e, pbg_error* err, pbg_field* field);
 
 /* JANITORIAL FUNCTIONS */
-void pbg_error_init(pbg_error* err);
+/* No local functions. */
 
 /* CONVERSION & CHECKING TOOLKIT */
+pbg_field_type pbg_gettype(char* str, int n);
 int pbg_istypedate(char* str, int n);
 int pbg_istypenumber(char* str, int n);
 int pbg_istypebool(char* str, int n);
@@ -154,92 +157,75 @@ void pbg_error_print(pbg_error* err)
 	printf("\n");
 }
 
-void pbg_err_alloc(pbg_error* err, int line, char* file)
+void pbg_err_init(pbg_error* err, pbg_error_type type, int line, char* file, 
+		int size, void* data)
 {
-	err->_type = PBG_ERR_ALLOC;
+	err->_type = type;
 	err->_line = line;
 	err->_file = file;
-	err->_int = 0;
-	err->_data = NULL;
+	err->_int = size;
+	err->_data = data;
+}
+
+void pbg_err_alloc(pbg_error* err, int line, char* file) {
+	pbg_err_init(err, PBG_ERR_ALLOC, line, file, 0, NULL);
 }
 
 void pbg_err_unknown_type(pbg_error* err, int line, char* file, 
 		char* field, int n)
 {
 	pbg_unknown_type_err* data;
-	err->_type = PBG_ERR_UNKNOWN_TYPE;
-	err->_line = line;
-	err->_file = file;
-	err->_int = n;
-	err->_data = malloc(err->_int * sizeof(char));
-	if(err->_data == NULL) {
+	data = malloc(n * sizeof(char));
+	if(data == NULL) {
 		pbg_err_alloc(err, __LINE__, __FILE__);  /* gah. */
 		return;
 	}
-	data = (pbg_unknown_type_err*) err->_data;
 	data->_field = field;
 	data->_n = n;
+	pbg_err_init(err, PBG_ERR_UNKNOWN_TYPE, line, file, n, data);
 }
 
 void pbg_err_syntax(pbg_error* err, int line, char* file, 
 		char* str, int i, char* msg)
 {
 	pbg_syntax_err* data;
-	err->_type = PBG_ERR_SYNTAX;
-	err->_line = line;
-	err->_file = file;
-	err->_int = sizeof(pbg_syntax_err);
-	err->_data = malloc(err->_int);
-	if(err->_data == NULL) {
+	int size;
+	data = malloc(size = sizeof(pbg_syntax_err));
+	if(data == NULL) {
 		pbg_err_alloc(err, __LINE__, __FILE__); /* unfortunate. */
 		return;
 	}
-	data = (pbg_syntax_err*)err->_data;
 	data->_msg = msg;
 	data->_str = str;
 	data->_i = i;
+	pbg_err_init(err, PBG_ERR_SYNTAX, line, file, size, data);
 }
 
 void pbg_err_op_arity(pbg_error* err, int line, char* file, 
 		pbg_field_type type, int arity)
 {
 	pbg_op_arity_err* data;
-	err->_type = PBG_ERR_OP_ARITY;
-	err->_line = line;
-	err->_file = file;
-	err->_int = sizeof(pbg_op_arity_err);
-	err->_data = malloc(err->_int);
-	if(err->_data == NULL) {
+	int size;
+	data = malloc(size = sizeof(pbg_op_arity_err));
+	if(data == NULL) {
 		pbg_err_alloc(err, __LINE__, __FILE__); /* unfortunate. */
 		return;
 	}
-	data = (pbg_op_arity_err*)err->_data;
 	data->_arity = arity;
 	data->_type = type;
+	pbg_err_init(err, PBG_ERR_OP_ARITY, line, file, size, data);
 }
 
-void pbg_err_state(pbg_error* err, int line, char* file, char* msg)
-{
-	err->_type = PBG_ERR_STATE;
-	err->_line = line;
-	err->_file = file;
-	err->_int = 0;
-	err->_data = msg;
+void pbg_err_state(pbg_error* err, int line, char* file, char* msg) {
+	pbg_err_init(err, PBG_ERR_STATE, line, file, 0, msg);
 }
 
-void pbg_err_op_arg_type(pbg_error* err, int line, char* file, char* msg)
-{
-	err->_type = PBG_ERR_OP_ARG_TYPE;
-	err->_line = line;
-	err->_file = file;
-	err->_int = 0;
-	err->_data = msg;
+void pbg_err_op_arg_type(pbg_error* err, int line, char* file, char* msg) {
+	pbg_err_init(err, PBG_ERR_OP_ARG_TYPE, line, file, 0, msg);
 }
 
-void pbg_error_free(pbg_error* err)
-{
-	if(err->_int != 0)
-		free(err->_data);
+void pbg_error_free(pbg_error* err) {
+	if(err->_int != 0) free(err->_data);
 }
 
 
@@ -269,8 +255,7 @@ pbg_field* pbg_field_get(pbg_expr* e, int index)
  * Free's the single pbg_field pointed to by the specified pointer.
  * @param field  pbg_field to free.
  */
-void pbg_field_free(pbg_field* field)
-{
+void pbg_field_free(pbg_field* field) {
 	if(field->_data != NULL) free(field->_data);
 }
 
@@ -316,6 +301,18 @@ int pbg_store_variable(pbg_expr* e, pbg_field field)
  **************************/
 
 /**
+ * TODO
+ */
+pbg_field pbg_make_init(pbg_field_type type, int size, void* data)
+{
+	pbg_field field;
+	field._type = type;
+	field._int = size;
+	field._data = data;
+	return field;
+}
+
+/**
  * Makes a pbg_field representing the given operator type with the specified
  * number of child fields.
  * @param err   Used to store error, if any.
@@ -325,13 +322,11 @@ int pbg_store_variable(pbg_expr* e, pbg_field field)
  */
 pbg_field pbg_make_op(pbg_error* err, pbg_field_type type, int argc)
 {
-	pbg_field field;
-	field._type = type;
-	field._int = 0;
-	field._data = malloc(argc * sizeof(int));
-	if(field._data == NULL && err != NULL)
+	void* data;
+	data = malloc(argc * sizeof(int));
+	if(data == NULL)
 		pbg_err_alloc(err, __LINE__, __FILE__);
-	return field;
+	return pbg_make_init(type, 0, data);
 }
 
 /**
@@ -346,63 +341,54 @@ pbg_field pbg_make_op(pbg_error* err, pbg_field_type type, int argc)
  */
 pbg_field pbg_make_var(pbg_error* err, char* str, int n)
 {
-	pbg_field field = pbg_make_field(PBG_NULL);
-	field._type = PBG_LT_VAR;
-	field._int = (n-2) * sizeof(char);
-	field._data = malloc(field._int);
-	if(field._data == NULL) {
-		if(err != NULL) pbg_err_alloc(err, __LINE__, __FILE__);
-	}else
-		memcpy(field._data, str+1, n-2);
-	return field;
+	int size;
+	void* data;
+	data = malloc(size = (n-2) * sizeof(char));
+	if(data == NULL) 
+		pbg_err_alloc(err, __LINE__, __FILE__);
+	else
+		memcpy(data, str+1, n-2);
+	return pbg_make_init(PBG_LT_VAR, size, data);
 }
 
-pbg_field pbg_make_field(pbg_field_type type)
-{
-	pbg_field field;
-	field._type = type;
-	field._int = 0;
-	field._data = NULL;
-	return field;
+pbg_field pbg_make_field(pbg_field_type type) {
+	return pbg_make_init(type, 0, NULL);
 }
 
 pbg_field pbg_make_date(pbg_error* err, char* str, int n)
 {
-	pbg_field field = pbg_make_field(PBG_NULL);
-	field._type = PBG_LT_DATE;
-	field._int = sizeof(pbg_lt_date);
-	field._data = malloc(field._int);
-	if(field._data == NULL) {
-		if(err != NULL) pbg_err_alloc(err, __LINE__, __FILE__);
-	}else
-		pbg_todate((pbg_lt_date*)field._data, str, n);
-	return field;
+	int size;
+	pbg_lt_date* data;
+	data = malloc(size = sizeof(pbg_lt_date));
+	if(data == NULL) 
+		pbg_err_alloc(err, __LINE__, __FILE__);
+	else
+		pbg_todate(data, str, n);
+	return pbg_make_init(PBG_LT_DATE, size, data);
 }
 
 pbg_field pbg_make_number(pbg_error* err, char* str, int n)
 {
-	pbg_field field = pbg_make_field(PBG_NULL);
-	field._type = PBG_LT_NUMBER;
-	field._int = sizeof(pbg_lt_number);
-	field._data = malloc(field._int);
-	if(field._data == NULL) {
-		if(err != NULL) pbg_err_alloc(err, __LINE__, __FILE__);
-	}else
-		pbg_tonumber((pbg_lt_number*)field._data, str, n);
-	return field;
+	int size;
+	pbg_lt_number* data;
+	data = malloc(size = sizeof(pbg_lt_number));
+	if(data == NULL)
+		pbg_err_alloc(err, __LINE__, __FILE__);
+	else
+		pbg_tonumber(data, str, n);
+	return pbg_make_init(PBG_LT_NUMBER, size, data);
 }
 
 pbg_field pbg_make_string(pbg_error* err, char* str, int n)
 {
-	pbg_field field = pbg_make_field(PBG_NULL);
-	field._type = PBG_LT_STRING;
-	field._int = (n-2) * sizeof(pbg_lt_string);
-	field._data = malloc(field._int);
-	if(field._data == NULL) {
-		if(err != NULL) pbg_err_alloc(err, __LINE__, __FILE__);
-	}else
-		memcpy(field._data, str+1, n-2);
-	return field;
+	int size;
+	pbg_lt_string* data;
+	data = malloc(size = (n-2) * sizeof(pbg_lt_string));
+	if(data == NULL)
+		pbg_err_alloc(err, __LINE__, __FILE__);
+	else
+		memcpy(data, str+1, n-2);
+	return pbg_make_init(PBG_LT_STRING, size, data);
 }
 
 
@@ -581,7 +567,7 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 	int status;
 	
 	/* Always start with a clean error! */
-	pbg_error_init(err);
+	pbg_err_init(err, PBG_ERR_NONE, 0, NULL, 0, NULL);
 	
 	/* Set to NULL to allow for pbg_free to check if needing free. */
 	e->_constants = NULL;
@@ -782,7 +768,6 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 int pbg_evaluate_op_not(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
 	int child0, result;
-	
 	child0 = ((int*)field->_data)[0];
 	result = pbg_evaluate_r(e, err, pbg_field_get(e, child0));
 	if(result == -1) return -1;  /* Pass error through. */
@@ -791,9 +776,7 @@ int pbg_evaluate_op_not(pbg_expr* e, pbg_error* err, pbg_field* field)
 
 int pbg_evaluate_op_and(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	int i, size;
-	int childi, result;
-	
+	int i, size, childi, result;
 	size = field->_int;
 	for(i = 0; i < size; i++) {
 		childi = ((int*)field->_data)[i];
@@ -806,11 +789,8 @@ int pbg_evaluate_op_and(pbg_expr* e, pbg_error* err, pbg_field* field)
 
 int pbg_evaluate_op_or(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	int i, size;
-	int childi, result;
-	
-	size = field->_int;
-	for(i = 0; i < size; i++) {
+	int i, childi, result;
+	for(i = 0; i < field->_int; i++) {
 		childi = ((int*)field->_data)[i];
 		result = pbg_evaluate_r(e, err, pbg_field_get(e, childi));
 		if(result == -1) return -1;  /* Pass error through. */
@@ -822,23 +802,17 @@ int pbg_evaluate_op_or(pbg_expr* e, pbg_error* err, pbg_field* field)
 int pbg_evaluate_op_exst(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
 	int child0;
-	pbg_field* c0;
 	PBG_UNUSED(err);
-	
 	child0 = ((int*)field->_data)[0];
-	c0 = pbg_field_get(e, child0);
-	return c0->_type != PBG_NULL;
+	return pbg_field_get(e, child0)->_type != PBG_NULL;
 }
 
 int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	int i, size;
-	int child0, childi, result;
+	int i, child0, childi, result;
 	pbg_field* c0, *ci;
 	PBG_UNUSED(err);
-	
 	/* Ensure type and size of all children are identical. */
-	size = field->_int;
 	child0 = ((int*)field->_data)[0];
 	c0 = pbg_field_get(e, child0);
 	if(c0->_type == PBG_NULL) {
@@ -849,7 +823,7 @@ int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_field* field)
 	/* We have a bunch of BOOLs! Evaluate them. */
 	if(pbg_type_isbool(c0->_type)) {
 		result = pbg_evaluate_r(e, err, c0);
-		for(i = 1; i < size; i++) {
+		for(i = 1; i < field->_int; i++) {
 			childi = ((int*)field->_data)[i];
 			ci = pbg_field_get(e, childi);
 			if(ci->_type == PBG_NULL) {
@@ -863,7 +837,7 @@ int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_field* field)
 		return 1;
 	/* We don't have a bunch of BOOLs! Do standard equality test. */
 	}else{
-		for(i = 1; i < size; i++) {
+		for(i = 1; i < field->_int; i++) {
 			childi = ((int*)field->_data)[i];
 			ci = pbg_field_get(e, childi);
 			if(ci->_type == PBG_NULL) {
@@ -887,11 +861,8 @@ int pbg_evaluate_op_neq(pbg_expr* e, pbg_error* err, pbg_field* field)
 	int child0, child1;
 	pbg_field* c0, *c1;
 	PBG_UNUSED(err);
-	
-	child0 = ((int*)field->_data)[0];
-	child1 = ((int*)field->_data)[1];
-	c0 = pbg_field_get(e, child0);
-	c1 = pbg_field_get(e, child1);
+	child0 = ((int*)field->_data)[0], child1 = ((int*)field->_data)[1];
+	c0 = pbg_field_get(e, child0), c1 = pbg_field_get(e, child1);
 	if(c0->_type == PBG_NULL || c1->_type == PBG_NULL) {
 		pbg_err_op_arg_type(err, __LINE__, __FILE__, 
 				"NULL input given to NEQ operator.");
@@ -910,11 +881,8 @@ int pbg_evaluate_op_lt(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
 	int child0, child1;
 	pbg_field* c0, *c1;
-	
-	child0 = ((int*)field->_data)[0];
-	child1 = ((int*)field->_data)[1];
-	c0 = pbg_field_get(e, child0);
-	c1 = pbg_field_get(e, child1);
+	child0 = ((int*)field->_data)[0], child1 = ((int*)field->_data)[1];
+	c0 = pbg_field_get(e, child0), c1 = pbg_field_get(e, child1);
 	if(c0->_type == PBG_NULL || c1->_type == PBG_NULL) {
 		pbg_err_op_arg_type(err, __LINE__, __FILE__, 
 				"NULL input given to LT operator.");
@@ -944,11 +912,8 @@ int pbg_evaluate_op_gt(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
 	int child0, child1;
 	pbg_field* c0, *c1;
-	
-	child0 = ((int*)field->_data)[0];
-	child1 = ((int*)field->_data)[1];
-	c0 = pbg_field_get(e, child0);
-	c1 = pbg_field_get(e, child1);
+	child0 = ((int*)field->_data)[0], child1 = ((int*)field->_data)[1];
+	c0 = pbg_field_get(e, child0), c1 = pbg_field_get(e, child1);
 	if(c0->_type == PBG_NULL || c1->_type == PBG_NULL) {
 		pbg_err_op_arg_type(err, __LINE__, __FILE__, 
 				"NULL input given to GT operator.");
@@ -978,11 +943,8 @@ int pbg_evaluate_op_lte(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
 	int child0, child1;
 	pbg_field* c0, *c1;
-	
-	child0 = ((int*)field->_data)[0];
-	child1 = ((int*)field->_data)[1];
-	c0 = pbg_field_get(e, child0);
-	c1 = pbg_field_get(e, child1);
+	child0 = ((int*)field->_data)[0], child1 = ((int*)field->_data)[1];
+	c0 = pbg_field_get(e, child0), c1 = pbg_field_get(e, child1);
 	if(c0->_type == PBG_NULL || c1->_type == PBG_NULL) {
 		pbg_err_op_arg_type(err, __LINE__, __FILE__, 
 				"NULL input given to LTE operator.");
@@ -1012,11 +974,8 @@ int pbg_evaluate_op_gte(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
 	int child0, child1;
 	pbg_field* c0, *c1;
-	
-	child0 = ((int*)field->_data)[0];
-	child1 = ((int*)field->_data)[1];
-	c0 = pbg_field_get(e, child0);
-	c1 = pbg_field_get(e, child1);
+	child0 = ((int*)field->_data)[0], child1 = ((int*)field->_data)[1];
+	c0 = pbg_field_get(e, child0), c1 = pbg_field_get(e, child1);
 	if(c0->_type == PBG_NULL || c1->_type == PBG_NULL) {
 		pbg_err_op_arg_type(err, __LINE__, __FILE__, 
 				"NULL input given to GTE operator.");
@@ -1044,11 +1003,9 @@ int pbg_evaluate_op_gte(pbg_expr* e, pbg_error* err, pbg_field* field)
 
 int pbg_evaluate_op_typeof(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	int i, size, child0, childi;
+	int i, child0, childi;
 	pbg_field* c0, *ci;
 	pbg_field_type type;
-	
-	size = field->_int;
 	child0 = ((int*)field->_data)[0];
 	c0 = pbg_field_get(e, child0);
 	type = c0->_type;
@@ -1059,7 +1016,7 @@ int pbg_evaluate_op_typeof(pbg_expr* e, pbg_error* err, pbg_field* field)
 		return -1;
 	}
 	/* Verify types of all trailing arguments. */
-	for(i = 1; i < size; i++) {
+	for(i = 1; i < field->_int; i++) {
 		childi = ((int*)field->_data)[i];
 		ci = pbg_field_get(e, childi);
 		if(type == PBG_LT_TP_BOOL && !pbg_type_isbool(ci->_type))
@@ -1079,7 +1036,7 @@ int pbg_evaluate_op_typeof(pbg_expr* e, pbg_error* err, pbg_field* field)
  */
 int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	if(pbg_type_isbool(field->_type)) {
+	if(pbg_type_isbool(field->_type))
 		switch(field->_type) {
 			case PBG_OP_NOT:   return pbg_evaluate_op_not(e, err, field);
 			case PBG_OP_AND:   return pbg_evaluate_op_and(e, err, field);
@@ -1097,23 +1054,19 @@ int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_field* field)
 			default: pbg_err_state(err, __LINE__, __FILE__,
 							"Unsupported operation.");
 		}
-		return -1;
-	}else{
+	else
 		pbg_err_state(err, __LINE__, __FILE__, 
 				"Cannot evaluate a non-BOOL value.");
-		return -1;
-	}
+	return -1;
 }
 
 int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_field (*dict)(char*, int))
 {
 	int i, result;
-	pbg_field* newvars;
-	pbg_field* var;
-	pbg_field* oldvars;
+	pbg_field* newvars, *var, *oldvars;
 	
 	/* Always start with a clean error! */
-	pbg_error_init(err);
+	pbg_err_init(err, PBG_ERR_NONE, 0, NULL, 0, NULL);
 	
 	/* Variable resolution. Lookup every variable in provided dictionary. */
 	newvars = (pbg_field*) malloc(e->_numvars * sizeof(pbg_field));
@@ -1151,15 +1104,6 @@ int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_field (*dict)(char*, int))
  * JANITORIAL FUNCTIONS *
  *                      *
  ************************/
- 
-void pbg_error_init(pbg_error* err)
-{
-	err->_type = PBG_ERR_NONE;
-	err->_line = 0;
-	err->_file = NULL;
-	err->_int = 0;
-	err->_data = NULL;
-}
 
 void pbg_free(pbg_expr* e)
 {
@@ -1236,8 +1180,7 @@ char* pbg_error_str(pbg_error_type type)
 	return "PBG_ERR_???";
 }
 
-int pbg_iserror(pbg_error* err)
-{
+int pbg_iserror(pbg_error* err) {
 	return err->_type != PBG_ERR_NONE;
 }
 
@@ -1276,8 +1219,7 @@ pbg_field_type pbg_gettype(char* str, int n)
 	return PBG_NULL;
 }
 
-int pbg_istypedate(char* str, int n)
-{
+int pbg_istypedate(char* str, int n) {
 	return n == 4 && 
 		str[0]=='D' && 
 		str[1]=='A' && 
@@ -1285,8 +1227,7 @@ int pbg_istypedate(char* str, int n)
 		str[3]=='E';
 }
 
-int pbg_istypenumber(char* str, int n)
-{
+int pbg_istypenumber(char* str, int n) {
 	return n == 6 && 
 		str[0]=='N' && 
 		str[1]=='U' && 
@@ -1296,8 +1237,7 @@ int pbg_istypenumber(char* str, int n)
 		str[5]=='R';
 }
 
-int pbg_istypebool(char* str, int n)
-{
+int pbg_istypebool(char* str, int n) {
 	return n == 4 && 
 		str[0]=='B' && 
 		str[1]=='O' && 
@@ -1305,8 +1245,7 @@ int pbg_istypebool(char* str, int n)
 		str[3]=='L';
 }
 
-int pbg_istypestring(char* str, int n)
-{
+int pbg_istypestring(char* str, int n) {
 	return n == 6 && 
 		str[0]=='S' && 
 		str[1]=='T' && 
@@ -1316,8 +1255,7 @@ int pbg_istypestring(char* str, int n)
 		str[5]=='G';
 }
 
-int pbg_istrue(char* str, int n)
-{
+int pbg_istrue(char* str, int n) {
 	return n == 4 && 
 		str[0]=='T' && 
 		str[1]=='R' && 
@@ -1325,8 +1263,7 @@ int pbg_istrue(char* str, int n)
 		str[3]=='E';
 }
 
-int pbg_isfalse(char* str, int n)
-{
+int pbg_isfalse(char* str, int n) {
 	return n == 5 && 
 		str[0]=='F' && 
 		str[1]=='A' && 
@@ -1380,21 +1317,18 @@ int pbg_isnumber(char* str, int n)
 	return 1;
 }
 
-void pbg_tonumber(pbg_lt_number* ptr, char* str, int n)
-{
+void pbg_tonumber(pbg_lt_number* ptr, char* str, int n) {
 	PBG_UNUSED(n);
 	ptr->_val = atof(str);
 }
 
-int pbg_cmpnumber(pbg_lt_number* n1, pbg_lt_number* n2)
-{
+int pbg_cmpnumber(pbg_lt_number* n1, pbg_lt_number* n2) {
 	if(n1->_val < n2->_val) return -1;
 	if(n1->_val > n2->_val) return 1;
 	return 0;
 }
 
-int pbg_cmpdate(pbg_lt_date* n1, pbg_lt_date* n2)
-{
+int pbg_cmpdate(pbg_lt_date* n1, pbg_lt_date* n2) {
 	if(n1->_YYYY < n2->_YYYY) return -1;
 	if(n1->_YYYY > n2->_YYYY) return 1;
 	if(n1->_MM < n2->_MM) return -1;
@@ -1404,24 +1338,20 @@ int pbg_cmpdate(pbg_lt_date* n1, pbg_lt_date* n2)
 	return 0;
 }
 
-int pbg_cmpstring(pbg_lt_string* s1, pbg_lt_string* s2, int n)
-{
+int pbg_cmpstring(pbg_lt_string* s1, pbg_lt_string* s2, int n) {
 	return strncmp(s1, s2, n);
 }
 
-int pbg_isvar(char* str, int n)
-{
+int pbg_isvar(char* str, int n) {
 	return str[0] == '[' && str[n-1] == ']';
 }
 
-int pbg_isstring(char* str, int n)
-{
+int pbg_isstring(char* str, int n) {
 	/* TODO ensure I don't contain any unescaped single quotes! */
 	return str[0] == '\'' && str[n-1] == '\'';
 }
 
-int pbg_isdate(char* str, int n)
-{
+int pbg_isdate(char* str, int n) {
 	return n == 10 && 
 		pbg_isdigit(str[0]) && pbg_isdigit(str[1]) && 
 		pbg_isdigit(str[2]) && pbg_isdigit(str[3]) &&
@@ -1431,8 +1361,7 @@ int pbg_isdate(char* str, int n)
 		pbg_isdigit(str[8]) && pbg_isdigit(str[9]);
 }
 
-void pbg_todate(pbg_lt_date* ptr, char* str, int n)
-{
+void pbg_todate(pbg_lt_date* ptr, char* str, int n) {
 	if(n != 10) return;
 	ptr->_YYYY = (str[0]-'0')*1000 + (str[1]-'0')*100 + (str[2]-'0')*10 + (str[3]-'0');
 	ptr->_MM = (str[5]-'0')*10 + (str[6]-'0');
@@ -1447,8 +1376,7 @@ void pbg_todate(pbg_lt_date* ptr, char* str, int n)
  * @return 1 if the given type is TRUE, FALSE, or an operator,
  *         0 otherwise.
  */
-int pbg_type_isbool(pbg_field_type type)
-{
+int pbg_type_isbool(pbg_field_type type) {
 	return type == PBG_LT_TRUE || type == PBG_LT_FALSE || 
 			(type < PBG_MAX_OP && type > PBG_MIN_OP);
 }
@@ -1459,8 +1387,7 @@ int pbg_type_isbool(pbg_field_type type)
  * @return 1 if the given type is an operator,
  *         0 otherwise.
  */
-int pbg_type_isop(pbg_field_type type)
-{
+int pbg_type_isop(pbg_field_type type) {
 	return type > PBG_MIN_OP && type < PBG_MAX_OP;
 }
 
