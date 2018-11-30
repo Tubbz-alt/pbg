@@ -49,8 +49,8 @@ BOOL
   = (> ANY ANY)
   = (<= ANY ANY)
   = (>= ANY ANY)
-  = (? ANY ...)
-  = (@ TYPE ANY ...)
+  = (? ALL ...)
+  = (@ TYPE ALL ...)
   = TRUE
   = FALSE
 ANY
@@ -58,6 +58,8 @@ ANY
   = NUMBER
   = STRING
   = BOOL
+ALL
+  = ANY
   = NULL
 ```
 
@@ -93,7 +95,7 @@ A `NULL` literal represents... nothing. It is written as `NULL`. If a variable i
 
 ### opertions
 
-**pbg** supports a conservative set of essential operations. Every operation should be thought of as a function that accepts inputs of various types and returns a `BOOL`.
+**pbg** supports a conservative set of essential operations. Every operation should be thought of as a function that accepts inputs of various types and returns a `BOOL`. Only two operations, `EXST` and `TYPE`, support `NULL` inputs. All other operations will throw errors when given `NULL` as an input. This is done to differentiate variable existence from the truth value of the operation predicate when a variable is defined.
 
 ##### NOT `(! BOOL)`
 
@@ -157,7 +159,7 @@ The at least operator, abbreviated `GTE`. Take two inputs of any type. Return `T
 
 ##### Existence `(? ALL ...)`
 
-The existence operator, abbreviated `EXST`. Take one or more inputs of any type. Return `TRUE` only if it its argument is not `NULL`. `EXST` is useful for checking if a variable is defined.
+The existence operator, abbreviated `EXST`. Take one or more inputs of any type, including `NULL`. Return `TRUE` only if it its argument is not `NULL`. `EXST` is useful for checking if a variable is defined.
 + `(? 5)` is `TRUE`
 + `(? 2018-10-12)` is `TRUE`
 + `(? NULL)` is `FALSE`
@@ -165,7 +167,7 @@ The existence operator, abbreviated `EXST`. Take one or more inputs of any type.
 
 ##### Type Check `(@ TYPE ALL ...)`
 
-The type check operator is written as `@`. Take a `TYPE` name followed by at least one input. Return `TRUE` only if every argument after the first has the type specified by the first. 
+The type check operator is written as `@`. Take a `TYPE` name followed by at least one input of any type, including `NULL`. Return `TRUE` only if every argument after the first has the type specified by the first. 
 + Notice that `(?[a])` and `(@ NULL [a])` have the same truth table.
 + `(@ NUMBER 3.14 'hi' 17)` is `FALSE`, because `'hi'` is not a `NUMBER` even though `3.14` and `17` are. 
 + `(@ DATE 2018-10-12)` is `TRUE`, because `2018-10-12` is a `DATE` literal.
