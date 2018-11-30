@@ -1,27 +1,20 @@
 # pbg
-A simple grammar for writing boolean expressions implemented in a small, portable C library.
 
-[about](#about) | [philosophy](#philosophy) | [features](#features) | [design](#design) | [API & example](#API)
+(? [[overview](#overview)] [[philosophy](#philosophy)] [[features](#features)] [[design](#design)] [[library & example](#library)])
 
 
-## about
+## overview
 
-**pbg**, an initialism for Prefix Boolean Grammar, is a lightweight grammar for writing boolean expressions.
-
-The following is a PBG expression:
-```
-(& (< [start] [end]) (= [start] 2018-10-12))
-```
-This expression checks if the variable `start` is less than the variable `end` and if `start` is a date equal to October 12, 2018. It evaluates to `TRUE` only if both conditions are `TRUE`.
-
-PBG is designed to be used as a module within [**tbd**, the Tiny Boolean DBMS](https://github.com/imtjd/tbd); however, feel free to use it wherever a use can be found.
+pbg, an initialism for Prefix Boolean Grammar, is a lightweight grammar for writing boolean expressions. This repository provides an efficient and minimial C library implementing a pbg runtime.
 
 
 ## philosophy
 
 pbg (the grammar) is designed to be **simple** (simple syntax with a minimal set of features), **readable** (easy to read and write expressions), and **expressive** (expressions pack the full punch of propositional logic).
 
-pbg (the C library) is designed to be **fast** (quick compilation and evaluation), **robust** (faithful implementation of the grammar, full error reporting on failure), and **simple** (few API functions, flexible dictionary implementation).
+pbg (the C library) is designed to be **fast** (quick compilation and evaluation), **robust** (faithful implementation of the grammar and full error handling), and **simple** (few API functions with a flexible dictionary implementation).
+
+Both are designed to be **predictable**. Neither is built to make assumptions. The library will never fail silently. For example, an undefined variable evaluates to `NULL`, which, when passed to the `<` operator, will generate an error: the operation will not simply evaluate to `FALSE`. If it did, this would violate the defined behavior of the operator. If the variable may not be defined, the expression should explicitly test this before using the variable.
 
 
 ## features
@@ -35,43 +28,18 @@ pbg (the C library) is designed to be **fast** (quick compilation and evaluation
 
 ## design
 
-All valid pbg expressions can be generated with the following grammar:
-```
-EXPR
-  = BOOL
-BOOL
-  = (! BOOL)
-  = (& BOOL BOOL ...)
-  = (| BOOL BOOL ...)
-  = (= ANY ANY ...)
-  = (!= ANY ANY)
-  = (< ANY ANY)
-  = (> ANY ANY)
-  = (<= ANY ANY)
-  = (>= ANY ANY)
-  = (? ALL ...)
-  = (@ TYPE ALL ...)
-  = TRUE
-  = FALSE
-ANY
-  = DATE
-  = NUMBER
-  = STRING
-  = BOOL
-ALL
-  = ANY
-  = NULL
-```
+A **boolean-valued function** takes a set of inputs and outputs a **truth value**, `TRUE` or `FALSE`. Each **pbg expression** can be thought of as a boolean-valued function built from a small set of core operations and literals. On this view, the inputs to a pbg expression are variables.
 
-This grammar is defined recursively, so a pbg expression can be elegantly represented with an abstract syntax tree (AST).
+An **operation** is a built-in boolean-valued function. A **literal** is either a constant or a variable. Each literal has a data type, and each operation takes only certain literal types as inputs. The truth value of a pbg expression is determined by the operations and literals composing it.
 
-Each node in the tree is represented by a **field**. A field can be either an **operator** or a **literal**. Operators are always internal nodes of the AST; literals, always leaves.
-
-Each field has a **type**. The type of an operator determines its function as well as the types and multiplicity of its children (read: inputs). The type of a literal determines how the data within the field is interpreted and which operators it can be an input of.
 
 ### literals
 
-Literals are typed. The following types are supported: `DATE`, `BOOL`, `NUMBER`, `STRING`, and `NULL`. There also exist meta-literals called **type literals**. Instead of values having types, these reference the types themselves and are used by the `TYPE` operator.
+Each literal has a type. pbg defines the following types: `DATE`, `BOOL`, `NUMBER`, `STRING`, and `NULL`. The type of a literal is not explicitly declared; it is implicitly encoded via formatting. Literals can be either constants or variables.
+
+##### variables
+
+A `VAR` literal represents a variable and is formatted using square brackets. So `[start]` defines a variable named `start`. During evaluation, a variable will be replaced either by a constant or by `NULL`, if it is undefined.
 
 ##### DATE
 
@@ -79,11 +47,11 @@ A `DATE` literal represents a day in the Gregorian calendar and is formatted as 
 
 ##### BOOL
 
-A `BOOL` literal can be either `TRUE` or `FALSE`.
+A `BOOL` literal represents a truth value. It can be either `TRUE` or `FALSE`.
 
 ##### NUMBER
 
-A `NUMBER` literal represents a floating point number and is formatted in the same way a [*JSON* number](http://json.org/). So `3`, `3.14`, `314e-2`, `0.314`, and `0.0` are all valid `NUMBER` literals, but `.314`, `0.`, and `1e` are not.
+A `NUMBER` literal represents a floating point number and is formatted similarly to [JSON](http://json.org/) numbers. So `3`, `3.14`, `314e-2`, `0.314`, and `0.0` are all valid `NUMBER` literals, but `.314`, `0.`, and `1e` are not.
 
 ##### STRING
 
@@ -91,11 +59,12 @@ A `STRING` literal represents text, i.e. a string of characters, and is formatte
 
 ##### NULL
 
-A `NULL` literal represents... nothing. It is written as `NULL`. If a variable is not defined, it is considered `NULL`.
+A `NULL` literal occurs only when a variable is undefined. So if an expression references a variable which is undefined when the expression is evaluated, then it will evaluate to `NULL` during evaluation. This
+
 
 ### opertions
 
-**pbg** supports a conservative set of essential operations. Every operation should be thought of as a function that accepts inputs of various types and returns a `BOOL`. Only two operations, `EXST` and `TYPE`, support `NULL` inputs. All other operations will throw errors when given `NULL` as an input. This is done to differentiate variable existence from the truth value of the operation predicate when a variable is defined.
+Only two operations, `EXST` and `TYPE`, support `NULL` as an input. All other operations will throw errors when given `NULL` as an input. This is done to differentiate variable existence from the truth value of the operation predicate when a variable is defined.
 
 ##### NOT `(! BOOL)`
 
@@ -174,69 +143,42 @@ The type check operator is written as `@`. Take a `TYPE` name followed by at lea
 + `(@ DATE '2018-10-12')` is `FALSE`, because `'2018-10-12'` is a `STRING` literal.
 
 
-## API
+### formal grammar
 
-This repository provides a lightweight implementation of a PBG compiler and evaluator. It can be incorporated into an existing project by including `pbg.h`. Documentation of each API function is provided in `pbg.h` but is partially reproduced here for visibility. The library reserves the `pbg_` and `PBG_` prefixes.
-
-### literals & operators
-
-Both literal and operator types, as represented within the library, are enums with their type name prefixed by either `PBG_LT_` or `PBG_OP_`, respectively. So the `NUMBER` literal is referred to as `PBG_LT_NUMBER`, and the `OR` operator is referred to as `PBG_OP_OR`. Operators are named according to the abbreviations listed [above](#formal-defintiion).
-
-### functions
-
-```C
-/* Parse the string as a PBG expression. If a compilation error occurs, initialize 
- * the provided error argument accordingly. */
-void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
+The syntax for writing pbg expressions is succinctly captured by the following formal grammar:
+```
+EXPR
+  = BOOL
+BOOL
+  = (! BOOL)
+  = (& BOOL BOOL ...)
+  = (| BOOL BOOL ...)
+  = (= ANY ANY ...)
+  = (!= ANY ANY)
+  = (< ANY ANY)
+  = (> ANY ANY)
+  = (<= ANY ANY)
+  = (>= ANY ANY)
+  = (? ALL ...)
+  = (@ TYPE ALL ...)
+  = TRUE
+  = FALSE
+ANY
+  = DATE
+  = NUMBER
+  = STRING
+  = BOOL
+ALL
+  = ANY
+  = NULL
 ```
 
-```C
-/* Destroy the PBG expression instance, and free all associated resources. If 
- *`pbg_parse` succeeds, this function must be called to free up internal resources. */
-void pbg_free(pbg_expr* e)
-```
 
-```C
-/* Evaluate the PBG expression with the provided dictionary. If a runtime error 
- * occurs, initialize the provided error accordingly. */
-int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_field (*dict)(char*, int))
-```
+## library
 
-```C
-/* Make a field representing the given type. Initialize everything other than 
- * the type to zero. This is useful for creating a `TRUE`, `FALSE`, or `NULL` field. */
-pbg_field pbg_make_field(pbg_field_type type)
-```
+This repository provides a lightweight implementation of a pbg compiler and evaluator. It can be incorporated into an existing project by including `pbg.h`. Documentation of each API function is provided in `pbg.h` but is partially reproduced in this section. 
 
-```C
-/* Parse `str` as a `DATE` literal, and return a field representing it. */
-pbg_field pbg_make_date(pbg_error* err, char* str, int n)
-```
-
-```C
-/* Parse `str` as a `NUMBER` literal, and return a field representing it. */
-pbg_field pbg_make_number(pbg_error* err, char* str, int n)
-```
-
-```C
-/* Parse `str` as a `STRING` literal, and return a field representing it. */
-pbg_field pbg_make_string(pbg_error* err, char* str, int n)
-```
-
-```C
-/* Identifies the PBG expression type of the given string. */
-pbg_node_type pbg_gettype(char* str, int n)
-```
-
-```C
-/* Prints a human-readable representation of the given error. */
-void pbg_error_print(pbg_error* err)
-```
-
-```C
-/* Frees resources being used by the given error, if any. */
-void pbg_error_free(pbg_error* e)
-```
+**The library reserves the `pbg_` and `PBG_` prefixes.** If these are used by another library you are using, you'll need to rename all library functions and constants. Good luck, and godspeed.
 
 ### example
 
@@ -292,3 +234,59 @@ pbg_field dictionary(char* key, int n)
 }
 ```
 The output is `FALSE` because `(?[d])` asks if the variable `d` is defined, which it is not. The expression `(|(=[a][b])(?[d]))` is `TRUE`, however, because `(=[a][b])` asks if `a` and `b` are equal, which they are.
+
+### API
+
+```C
+/* Parse the string as a PBG expression. If a compilation error occurs, initialize 
+ * the provided error argument accordingly. */
+void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
+```
+
+```C
+/* Destroy the PBG expression instance, and free all associated resources. If 
+ *`pbg_parse` succeeds, this function must be called to free up internal resources. */
+void pbg_free(pbg_expr* e)
+```
+
+```C
+/* Evaluate the PBG expression with the provided dictionary. If a runtime error 
+ * occurs, initialize the provided error accordingly. */
+int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_field (*dict)(char*, int))
+```
+
+```C
+/* Make a field representing the given type. Initialize everything other than 
+ * the type to zero. This is useful for creating a `TRUE`, `FALSE`, or `NULL` field. */
+pbg_field pbg_make_field(pbg_field_type type)
+```
+
+```C
+/* Parse `str` as a `DATE` literal, and return a field representing it. */
+pbg_field pbg_make_date(pbg_error* err, char* str, int n)
+```
+
+```C
+/* Parse `str` as a `NUMBER` literal, and return a field representing it. */
+pbg_field pbg_make_number(pbg_error* err, char* str, int n)
+```
+
+```C
+/* Parse `str` as a `STRING` literal, and return a field representing it. */
+pbg_field pbg_make_string(pbg_error* err, char* str, int n)
+```
+
+```C
+/* Identifies the PBG expression type of the given string. */
+pbg_node_type pbg_gettype(char* str, int n)
+```
+
+```C
+/* Prints a human-readable representation of the given error. */
+void pbg_error_print(pbg_error* err)
+```
+
+```C
+/* Frees resources being used by the given error, if any. */
+void pbg_error_free(pbg_error* e)
+```
