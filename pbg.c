@@ -296,7 +296,11 @@ int pbg_store_variable(pbg_expr* e, pbg_field field)
  **************************/
 
 /**
- * TODO
+ * Create a new pbg_field with the given arguments.
+ * @param type  Type of the field.
+ * @param size  Size of the field, however that is measured.
+ * @param data  Data to store in the field.
+ * @return the new pbg_field.
  */
 pbg_field pbg_make_init(pbg_field_type type, int size, void* data)
 {
@@ -936,9 +940,6 @@ int pbg_evaluate_op_type(pbg_expr* e, pbg_error* err, pbg_field* field)
 	return 1;  /* TRUE! */
 }
 
-/**
- * TODO
- */
 int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
 	if(pbg_type_isbool(field->_type))
@@ -1252,7 +1253,6 @@ int pbg_isvar(char* str, int n) {
 }
 
 int pbg_isstring(char* str, int n) {
-	/* TODO ensure I don't contain any unescaped single quotes! */
 	return str[0] == '\'' && str[n-1] == '\'';
 }
 
@@ -1271,7 +1271,6 @@ void pbg_todate(pbg_lt_date* ptr, char* str, int n) {
 	ptr->_YYYY = (str[0]-'0')*1000 + (str[1]-'0')*100 + (str[2]-'0')*10 + (str[3]-'0');
 	ptr->_MM = (str[5]-'0')*10 + (str[6]-'0');
 	ptr->_DD = (str[8]-'0')*10 + (str[9]-'0');
-	/* TODO enforce ranges on months and days */
 }
 
 /**
