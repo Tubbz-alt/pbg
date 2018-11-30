@@ -107,8 +107,10 @@ int suite_evaluate()
 	/* EXST */
 	check(test_evaluate(&err, "(? [c])", dict, TRUE));
 	check(test_evaluate(&err, "(? [d])", dict, FALSE));
-	check(test_evaluate(&err, "(? [c] [c])", dict, ERROR));
-	check(test_evaluate(&err, "(? [c] [c] [c])", dict, ERROR));
+	check(test_evaluate(&err, "(? [c] [c])", dict, TRUE));
+	check(test_evaluate(&err, "(? [a] [c] [c])", dict, TRUE));
+	check(test_evaluate(&err, "(? [a] [c] [d])", dict, FALSE));
+	check(test_evaluate(&err, "(? [a] [d] [c])", dict, FALSE));
 	/* EQUAL */
 	check(test_evaluate(&err, "(= 10 10)", dict, TRUE));
 	check(test_evaluate(&err, "(= 10 10 10 10 10)", dict, TRUE));

@@ -415,7 +415,7 @@ int pbg_check_op_arity(pbg_field_type type, int numargs)
 		case PBG_OP_EQ:    arity = -2; break;
 		case PBG_OP_LT:    arity =  2; break;
 		case PBG_OP_GT:    arity =  2; break;
-		case PBG_OP_EXST:  arity =  1; break;
+		case PBG_OP_EXST:  arity = -1; break;
 		case PBG_OP_NEQ:   arity =  2; break;
 		case PBG_OP_LTE:   arity =  2; break;
 		case PBG_OP_GTE:   arity =  2; break;
@@ -781,10 +781,14 @@ int pbg_evaluate_op_or(pbg_expr* e, pbg_error* err, pbg_field* field)
 
 int pbg_evaluate_op_exst(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	int child0;
+	int i, childi;
 	PBG_UNUSED(err);
-	child0 = ((int*)field->_data)[0];
-	return pbg_field_get(e, child0)->_type != PBG_NULL;
+	for(i = 0; i < field->_int; i++) {
+		childi = ((int*)field->_data)[i];
+		if(pbg_field_get(e, childi)->_type == PBG_NULL)
+			return 0;  /* FALSE! */
+	}
+	return 1;  /* TRUE! */
 }
 
 int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_field* field)
