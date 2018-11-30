@@ -496,7 +496,11 @@ int pbg_check_op_arity(pbg_field_type type, int numargs)
 	return 1;
 }
 
-void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
+void pbg_parse(pbg_expr* e, pbg_error* err, char* str) {
+	pbg_parse_n(e, err, str, strlen(str));
+}
+
+void pbg_parse_n(pbg_expr* e, pbg_error* err, char* str, int n)
 {
 	int i;
 	

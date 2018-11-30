@@ -17,7 +17,7 @@ int main(void)
 	
 	/* Parse the expression string and check if 
 	 * there were any compilation errors. */
-	pbg_parse(&e, &err, str, strlen(str));
+	pbg_parse(&e, &err, str);
 	if(pbg_iserror(&err)) {
 		pbg_error_print(&err);
 		return 1;

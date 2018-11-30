@@ -346,7 +346,7 @@ int test_evaluate(pbg_error* err, char* str, pbg_field (*dict)(char*,int), int e
 	pbg_expr e;
 	int output;
 	/* Parse the string expression. */
-	pbg_parse(&e, err, str, strlen(str));
+	pbg_parse(&e, err, str);
 	/* Return if there's an error. */
 	if(err->_type != PBG_ERR_NONE)
 		return (expect == PBG_ERROR) ? PBG_TEST_PASS : PBG_TEST_FAIL;

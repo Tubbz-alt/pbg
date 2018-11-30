@@ -132,10 +132,18 @@ typedef struct {
  * Parses the string as a boolean expression in Prefix Boolean Grammar.
  * @param e    PBG expression instance to initialize.
  * @param err  Container to store error, if any occurs.
+ * @param str  String to parse. This must be terminated with '\0'.
+ */
+void pbg_parse(pbg_expr* e, pbg_error* err, char* str);
+
+/**
+ * Parses the string as a boolean expression in Prefix Boolean Grammar.
+ * @param e    PBG expression instance to initialize.
+ * @param err  Container to store error, if any occurs.
  * @param str  String to parse.
  * @param n    Length of the string.
  */
-void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n);
+void pbg_parse_n(pbg_expr* e, pbg_error* err, char* str, int n);
 
 /**
  * Evaluates the PBG expression with the provided assignments.
