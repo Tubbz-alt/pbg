@@ -240,47 +240,57 @@ The output is `FALSE` because `(?[d])` asks if the variable `d` is defined, whic
 ### API
 
 ```C
-/* Parse the string as a PBG expression. If a compilation error occurs, initialize 
+/* Parse the string as a pbg expression. If a compilation error occurs, initialize 
  * the provided error argument accordingly. */
-void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
+void pbg_parse(pbg_expr* e, pbg_error* err, char* str)
 ```
 
 ```C
-/* Destroy the PBG expression instance, and free all associated resources. If 
- *`pbg_parse` succeeds, this function must be called to free up internal resources. */
-void pbg_free(pbg_expr* e)
+/* Parse the string with the given length as a pbg expression. If a compilation error 
+ * occurs, initialize the provided error argument accordingly. */
+void pbg_parse_n(pbg_expr* e, pbg_error* err, char* str, int n)
 ```
 
 ```C
-/* Evaluate the PBG expression with the provided dictionary. If a runtime error 
+/* Evaluate the pbg expression with the provided dictionary. If a runtime error 
  * occurs, initialize the provided error accordingly. */
 int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_field (*dict)(char*, int))
 ```
 
 ```C
-/* Make a field representing the given type. Initialize everything other than 
- * the type to zero. This is useful for creating a `TRUE`, `FALSE`, or `NULL` field. */
-pbg_field pbg_make_field(pbg_field_type type)
+/* Destroy the pbg expression instance, and free all associated resources. If 
+ *`pbg_parse` succeeds, this function must be called to free up internal resources. */
+void pbg_free(pbg_expr* e)
 ```
 
 ```C
-/* Parse `str` as a `DATE` literal, and return a field representing it. */
-pbg_field pbg_make_date(pbg_error* err, char* str, int n)
+/* Makes a field representing a DATE. */
+pbg_field pbg_make_date(int year, int month, int day)
 ```
 
 ```C
-/* Parse `str` as a `NUMBER` literal, and return a field representing it. */
-pbg_field pbg_make_number(pbg_error* err, char* str, int n)
+/* Makes a field representing a BOOL. */
+pbg_field pbg_make_bool(int truth)
 ```
 
 ```C
-/* Parse `str` as a `STRING` literal, and return a field representing it. */
-pbg_field pbg_make_string(pbg_error* err, char* str, int n)
+/** Makes a field representing a NUMBER. */
+pbg_field pbg_make_number(double value)
 ```
 
 ```C
-/* Identifies the PBG expression type of the given string. */
-pbg_node_type pbg_gettype(char* str, int n)
+/* Makes a field representing a STRING. */
+pbg_field pbg_make_string(char* str)
+```
+
+```C
+/* Makes a field representing a NULL. */
+pbg_field pbg_make_null(void)
+```
+
+```C
+/* Checks if the given error has been initialized with error data. */
+int pbg_iserror(pbg_error* err)
 ```
 
 ```C

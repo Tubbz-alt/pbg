@@ -1,10 +1,12 @@
-/********************************************************************************
- * Prefix Boolean Grammar (PBG), a lightweight C library                        *
- * By Tyler J. Daddio, November 2018                                            *
- ********************************************************************************/
-
 #ifndef __PBG_H__
 #define __PBG_H__
+
+/*********************************************************
+ *                                                       *
+ * Prefix Boolean Grammar (PBG), a lightweight C library *
+ * By Tyler J. Daddio, November 2018                     *
+ *                                                       *
+ *********************************************************/
 
 /* Used to suppress compiler warnings for intentionally unused arguments. This
  * isn't as foolproof as GCC's unused attribute, but it is not compiler-
