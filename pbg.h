@@ -138,13 +138,6 @@ typedef struct {
 void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n);
 
 /**
- * Destroys the PBG expression instance and frees all associated resources.
- * This function does not free the provided pointer.
- * @param e PBG expression to destroy.
- */
-void pbg_free(pbg_expr* e);
-
-/**
  * Evaluates the PBG expression with the provided assignments.
  * @param e     PBG expression to evaluate.
  * @param err   Container to store error, if any occurs.
@@ -154,6 +147,13 @@ void pbg_free(pbg_expr* e);
  */
 int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_field (*dict)(char*, int));
 
+/**
+ * Destroys the PBG expression instance and frees all associated resources.
+ * This function does not free the provided pointer.
+ * @param e PBG expression to destroy.
+ */
+void pbg_free(pbg_expr* e);
+
 
 /**************
  *            *
@@ -162,48 +162,40 @@ int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_field (*dict)(char*, int));
  **************/
 
 /**
- * Makes a field representing the given type. Initializes everything other than 
- * the type to zero.
- * @param type  Type of the field.
- * @return a new field with the given type.
+ * Makes a field representing a DATE.
+ * @param year   Year of the date.
+ * @param month  Month of the date.
+ * @param day    Day of the date.
+ * @return a new DATE field.
  */
-pbg_field pbg_make_field(pbg_field_type type);
+pbg_field pbg_make_date(int year, int month, int day);
 
 /**
- * Makes a field representing a DATE. Attempts to parse the given string as a
- * DATE. If an error occurs during conversion, then err will be initialized with
- * the relevant error, if it is not NULL.
- * @param err  Used to store error, if any.
- * @param str  String to parse as a DATE.
- * @param n    Length of str.
- * @return a new field with the PBG_LT_DATE type if successful,
- *         a field with the PBG_NULL type otherwise.
+ * Makes a field representing a BOOL.
+ * @param truth   Truth value of the new BOOL.
+ * @return a new BOOL field.
  */
-pbg_field pbg_make_date(pbg_error* err, char* str, int n);
+pbg_field pbg_make_bool(int truth);
 
 /**
- * Makes a field representing a NUMBER. Attempts to parse the given string as a
- * NUMBER. If an error occurs during conversion, then err will be initialized 
- * with the relevant error, if it is not NULL.
- * @param err  Used to store error, if any.
- * @param str  String to parse as a NUMBER.
- * @param n    Length of str.
- * @return a new field with the PBG_LT_NUMBER type if successful,
- *         a field with the PBG_NULL type otherwise.
+ * Makes a field representing a NUMBER.
+ * @param value   Numeric value of the NUMBER.
+ * @return a new NUMBER field.
  */
-pbg_field pbg_make_number(pbg_error* err, char* str, int n);
+pbg_field pbg_make_number(double value);
 
 /**
- * Makes a field representing a STRING. Attempts to parse the given string as a 
- * STRING. If an error occurs during conversion, then err will be initialized 
- * with the relevant error, if it is not NULL.
- * @param err  Used to store error, if any.
- * @param str  String to parse as a STRING.
- * @param n    Length of str.
- * @return a new field with the PBG_LT_STRING type if successful,
- *         a field with the PBG_NULL type otherwise.
+ * Makes a field representing a STRING.
+ * @param value   Value of the STRING.
+ * @return a new STRING field.
  */
-pbg_field pbg_make_string(pbg_error* err, char* str, int n);
+pbg_field pbg_make_string(char* str);
+
+/**
+ * Makes a field representing NULL.
+ * @return a new NULL field.
+ */
+pbg_field pbg_make_null(void);
 
 
 /***************

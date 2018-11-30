@@ -64,9 +64,12 @@ int pbg_store_constant(pbg_expr* e, pbg_field field);
 int pbg_store_variable(pbg_expr* e, pbg_field field);
 
 /* FIELD CREATION TOOLKIT */
-pbg_field pbg_make_init(pbg_field_type type, int size, void* data);
-pbg_field pbg_make_op(pbg_error* err, pbg_field_type type, int numchildren);
-pbg_field pbg_make_var(pbg_error* err, char* str, int n);
+pbg_field pbg_field_init(pbg_field_type type, int size, void* data);
+pbg_field pbg_parse_op(pbg_error* err, pbg_field_type type, int numchildren);
+pbg_field pbg_parse_var(pbg_error* err, char* str, int n);
+pbg_field pbg_parse_date(pbg_error* err, char* str, int n);
+pbg_field pbg_parse_number(pbg_error* err, char* str, int n);
+pbg_field pbg_parse_string(pbg_error* err, char* str, int n);
 
 /* FIELD PARSING TOOLKIT */
 int pbg_check_op_arity(pbg_field_type type, int numargs);
@@ -295,6 +298,44 @@ int pbg_store_variable(pbg_expr* e, pbg_field field)
  *                        *
  **************************/
 
+pbg_field pbg_make_date(int year, int month, int day)
+{
+	int size;
+	pbg_lt_date* data;
+	data = malloc(size = sizeof(pbg_lt_date));
+	data->_YYYY = year;
+	data->_MM = month;
+	data->_DD = day;
+	return pbg_field_init(PBG_LT_DATE, size, data);
+}
+
+pbg_field pbg_make_bool(int truth) {
+	return pbg_field_init(truth ? PBG_LT_TRUE : PBG_LT_FALSE, 0, NULL);
+}
+
+pbg_field pbg_make_number(double value)
+{
+	int size;
+	pbg_lt_number* data;
+	data = malloc(size = sizeof(pbg_lt_number));
+	data->_val = value;
+	return pbg_field_init(PBG_LT_NUMBER, size, data);
+}
+
+pbg_field pbg_make_string(char* str)
+{
+	int size, n;
+	pbg_lt_string* data;
+	n = strlen(str);
+	data = malloc(size = n * sizeof(pbg_lt_string));
+	memcpy(data, str, n);
+	return pbg_field_init(PBG_LT_STRING, size, data);
+}
+
+pbg_field pbg_make_null(void) {
+	return pbg_field_init(PBG_NULL, 0, NULL);
+}
+
 /**
  * Create a new pbg_field with the given arguments.
  * @param type  Type of the field.
@@ -302,7 +343,7 @@ int pbg_store_variable(pbg_expr* e, pbg_field field)
  * @param data  Data to store in the field.
  * @return the new pbg_field.
  */
-pbg_field pbg_make_init(pbg_field_type type, int size, void* data)
+pbg_field pbg_field_init(pbg_field_type type, int size, void* data)
 {
 	pbg_field field;
 	field._type = type;
@@ -319,26 +360,25 @@ pbg_field pbg_make_init(pbg_field_type type, int size, void* data)
  * @param argc  Number of arguments.
  * @return the new pbg_field.
  */
-pbg_field pbg_make_op(pbg_error* err, pbg_field_type type, int argc)
+pbg_field pbg_parse_op(pbg_error* err, pbg_field_type type, int argc)
 {
 	void* data;
 	data = malloc(argc * sizeof(int));
 	if(data == NULL)
 		pbg_err_alloc(err, __LINE__, __FILE__);
-	return pbg_make_init(type, argc, data);
+	return pbg_field_init(type, argc, data);
 }
 
 /**
  * Makes a field representing a VAR. Attempts to parse the given string as a 
  * VAR. If an error occurs during conversion, then err will be initialized with
- * the relevant error, if it is not NULL.
+ * the relevant error.
  * @param err  Used to store error, if any.
  * @param str  String to parse as a VAR.
  * @param n    Length of str.
- * @return a new field with the PBG_LT_VAR type if successful,
- *         a field with the PBG_NULL type otherwise.
+ * @return a VAR field if successful, a NULL field otherwise.
  */
-pbg_field pbg_make_var(pbg_error* err, char* str, int n)
+pbg_field pbg_parse_var(pbg_error* err, char* str, int n)
 {
 	int size;
 	void* data;
@@ -347,14 +387,19 @@ pbg_field pbg_make_var(pbg_error* err, char* str, int n)
 		pbg_err_alloc(err, __LINE__, __FILE__);
 	else
 		memcpy(data, str+1, n-2);
-	return pbg_make_init(PBG_LT_VAR, size, data);
+	return pbg_field_init(PBG_LT_VAR, size, data);
 }
 
-pbg_field pbg_make_field(pbg_field_type type) {
-	return pbg_make_init(type, 0, NULL);
-}
-
-pbg_field pbg_make_date(pbg_error* err, char* str, int n)
+/**
+ * Makes a field representing a DATE. Attempts to parse the given string as a 
+ * DATE. If an error occurs during conversion, then err will be initialized with
+ * the relevant error.
+ * @param err  Used to store error, if any.
+ * @param str  String to parse as a DATE.
+ * @param n    Length of str.
+ * @return a DATE field if successful, a NULL field otherwise.
+ */
+pbg_field pbg_parse_date(pbg_error* err, char* str, int n)
 {
 	int size;
 	pbg_lt_date* data;
@@ -363,10 +408,19 @@ pbg_field pbg_make_date(pbg_error* err, char* str, int n)
 		pbg_err_alloc(err, __LINE__, __FILE__);
 	else
 		pbg_todate(data, str, n);
-	return pbg_make_init(PBG_LT_DATE, size, data);
+	return pbg_field_init(PBG_LT_DATE, size, data);
 }
 
-pbg_field pbg_make_number(pbg_error* err, char* str, int n)
+/**
+ * Makes a field representing a NUMBER. Attempts to parse the given string as a 
+ * NUMBER. If an error occurs during conversion, then err will be initialized 
+ * with the relevant error.
+ * @param err  Used to store error, if any.
+ * @param str  String to parse as a NUMBER.
+ * @param n    Length of str.
+ * @return a NUMBER field if successful, a NULL field otherwise.
+ */
+pbg_field pbg_parse_number(pbg_error* err, char* str, int n)
 {
 	int size;
 	pbg_lt_number* data;
@@ -375,10 +429,19 @@ pbg_field pbg_make_number(pbg_error* err, char* str, int n)
 		pbg_err_alloc(err, __LINE__, __FILE__);
 	else
 		pbg_tonumber(data, str, n);
-	return pbg_make_init(PBG_LT_NUMBER, size, data);
+	return pbg_field_init(PBG_LT_NUMBER, size, data);
 }
 
-pbg_field pbg_make_string(pbg_error* err, char* str, int n)
+/**
+ * Makes a field representing a STRING. Attempts to parse the given string as a 
+ * STRING. If an error occurs during conversion, then err will be initialized 
+ * with the relevant error.
+ * @param err  Used to store error, if any.
+ * @param str  String to parse as a STRING.
+ * @param n    Length of str.
+ * @return a STRING field if successful, a NULL field otherwise.
+ */
+pbg_field pbg_parse_string(pbg_error* err, char* str, int n)
 {
 	int size;
 	pbg_lt_string* data;
@@ -387,7 +450,7 @@ pbg_field pbg_make_string(pbg_error* err, char* str, int n)
 		pbg_err_alloc(err, __LINE__, __FILE__);
 	else
 		memcpy(data, str+1, n-2);
-	return pbg_make_init(PBG_LT_STRING, size, data);
+	return pbg_field_init(PBG_LT_STRING, size, data);
 }
 
 
@@ -666,7 +729,7 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 		if(pbg_type_isop(type)) {
 			/* Add operator to the tree. */
 			id = pbg_store_constant(e, 
-					pbg_make_op(err, type, groupsz[groupi]-1));
+					pbg_parse_op(err, type, groupsz[groupi]-1));
 			/* Enforce operator arity. */
 			if(pbg_check_op_arity(type, groupsz[groupi]-1) == 0) {
 				pbg_err_op_arity(err, __LINE__, __FILE__, type, groupsz[groupi]-1);
@@ -689,19 +752,19 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 			/* It's a variable. */
 			if(type == PBG_LT_VAR)
 				id = pbg_store_variable(e, 
-						pbg_make_var(err, str+start, len));
+						pbg_parse_var(err, str+start, len));
 			/* It's a date. */
 			else if(type == PBG_LT_DATE)
 				id = pbg_store_constant(e, 
-						pbg_make_date(err, str+start, len));
+						pbg_parse_date(err, str+start, len));
 			/* It's a number. */
 			else if(type == PBG_LT_NUMBER)
 				id = pbg_store_constant(e, 
-						pbg_make_number(err, str+start, len));
+						pbg_parse_number(err, str+start, len));
 			/* It's a string. */
 			else if(type == PBG_LT_STRING)
 				id = pbg_store_constant(e, 
-						pbg_make_string(err, str+start, len));
+						pbg_parse_string(err, str+start, len));
 			/* It's a simple field. */
 			else if(type == PBG_LT_TRUE || 
 					type == PBG_LT_FALSE || 
@@ -710,7 +773,7 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 					type == PBG_LT_TP_NUMBER || 
 					type == PBG_LT_TP_STRING)
 				id = pbg_store_constant(e, 
-							pbg_make_field(type));
+							pbg_field_init(type, 0, NULL));
 			/* It's an error... */
 			else {
 				pbg_err_unknown_type(err, __LINE__, __FILE__, str+start, n);

@@ -11,8 +11,8 @@ int main(void)
 	pbg_expr e;
 	int result;
 	
-	/* This is the expression string we'll evaluate using our dictionary. */
-	/* "Are [a] and [b] the same, and does [d] exist?" */
+	/* This is the expression string we'll evaluate using our dictionary.
+	 * It asks, "Are [a] and [b] the same, AND does [d] exist?" */
 	char* str = "(&(=[a][b])(?[d]))";
 	
 	/* Parse the expression string and check if 
@@ -42,8 +42,8 @@ pbg_field dictionary(char* key, int n)
 {
 	PBG_UNUSED(n);  /* Ignore compiler warnings. */
 	if(key[0] == 'a' || key[0] == 'b')
-		return pbg_make_number(NULL, "5.0", strlen("5.0"));
+		return pbg_make_number(5.0);
 	if(key[0] == 'c')
-		return pbg_make_number(NULL, "6.0", strlen("6.0"));
-	return pbg_make_field(PBG_NULL);
+		return pbg_make_number(6.0);
+	return pbg_make_null();
 }

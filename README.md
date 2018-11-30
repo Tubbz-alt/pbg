@@ -196,9 +196,10 @@ int main(void)
 {
 	pbg_error err;
 	pbg_expr e;
+	int result;
 	
-	/* This is the expression string we'll evaluate using our dictionary. */
-	/* "Are [a] and [b] the same, and does [d] exist?" */
+	/* This is the expression string we'll evaluate using our dictionary.
+	 * It asks, "Are [a] and [b] the same, AND does [d] exist?" */
 	char* str = "(&(=[a][b])(?[d]))";
 	
 	/* Parse the expression string and check if 
@@ -211,7 +212,7 @@ int main(void)
 	
 	/* Evaluate the expression string and check if 
 	 * there were any runtime errors. */
-	int result = pbg_evaluate(&e, &err, dictionary);
+	result = pbg_evaluate(&e, &err, dictionary);
 	if(pbg_iserror(&err)) {
 		pbg_error_print(&err);
 		return 1;
@@ -228,10 +229,10 @@ pbg_field dictionary(char* key, int n)
 {
 	PBG_UNUSED(n);  /* Ignore compiler warnings. */
 	if(key[0] == 'a' || key[0] == 'b')
-		return pbg_make_number(NULL, "5.0", strlen("5.0"));
+		return pbg_make_number(5.0);
 	if(key[0] == 'c')
-		return pbg_make_number(NULL, "6.0", strlen("6.0"));
-	return pbg_make_field(PBG_NULL);
+		return pbg_make_number(6.0);
+	return pbg_make_null();
 }
 ```
 The output is `FALSE` because `(?[d])` asks if the variable `d` is defined, which it is not. The expression `(|(=[a][b])(?[d]))` is `TRUE`, however, because `(=[a][b])` asks if `a` and `b` are equal, which they are.
