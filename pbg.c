@@ -81,10 +81,7 @@ int pbg_evaluate_op_or(pbg_expr* e, pbg_error* err, pbg_field* field);
 int pbg_evaluate_op_exst(pbg_expr* e, pbg_error* err, pbg_field* field);
 int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_field* field);
 int pbg_evaluate_op_neq(pbg_expr* e, pbg_error* err, pbg_field* field);
-int pbg_evaluate_op_lt(pbg_expr* e, pbg_error* err, pbg_field* field);
-int pbg_evaluate_op_gt(pbg_expr* e, pbg_error* err, pbg_field* field);
-int pbg_evaluate_op_lte(pbg_expr* e, pbg_error* err, pbg_field* field);
-int pbg_evaluate_op_gte(pbg_expr* e, pbg_error* err, pbg_field* field);
+int pbg_evaluate_op_comp(pbg_expr* e, pbg_error* err, pbg_field* field);
 int pbg_evaluate_op_typeof(pbg_expr* e, pbg_error* err, pbg_field* field);
 
 /* JANITORIAL FUNCTIONS */
@@ -552,8 +549,10 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 	 * 3    Identify index of each group closing.                      *
 	 *******************************************************************/
 	
+	/* Ensure we have a stack for TRUE/FALSE standalone literals. */
+	if(maxdepth == 0) maxdepth = 1;
 	/* Use a stack to identify number of fields in each group. */
-	stack = malloc(2*++maxdepth * sizeof(int));
+	stack = malloc(2*maxdepth * sizeof(int));
 	
 	/* Use to record number of fields in each group. Notice that the number of 
 	 * groups is equal to the number of closings. */
@@ -860,128 +859,49 @@ int pbg_evaluate_op_neq(pbg_expr* e, pbg_error* err, pbg_field* field)
 			memcmp(c1->_data, c0->_data, c0->_int);
 }
 
-int pbg_evaluate_op_lt(pbg_expr* e, pbg_error* err, pbg_field* field)
+int pbg_evaluate_op_comp(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
+	int result;
 	int child0, child1;
 	pbg_field* c0, *c1;
 	child0 = ((int*)field->_data)[0], child1 = ((int*)field->_data)[1];
 	c0 = pbg_field_get(e, child0), c1 = pbg_field_get(e, child1);
 	if(c0->_type == PBG_NULL || c1->_type == PBG_NULL) {
 		pbg_err_op_arg_type(err, __LINE__, __FILE__, 
-				"NULL input given to LT operator.");
+				"NULL input given to comparison operator.");
 		return -1;
 	}
+	result = -2;
 	/* Both are NUMBERs. */
 	if(c0->_type == PBG_LT_NUMBER &&
 			c1->_type == PBG_LT_NUMBER)
-		return pbg_cmpnumber(c0->_data, c1->_data) < 0;
+		result = pbg_cmpnumber(c0->_data, c1->_data);
 	/* Both are DATEs. */
 	if(c0->_type == PBG_LT_DATE &&
 			c1->_type == PBG_LT_DATE)
-		return pbg_cmpdate(c0->_data, c1->_data) < 0;
+		result = pbg_cmpdate(c0->_data, c1->_data);
 	/* Both are STRINGs. */
 	if(c0->_type == PBG_LT_STRING &&
 			c1->_type == PBG_LT_STRING)
-		return pbg_cmpstring(c0->_data, c1->_data, c0->_int) < 0;
+		result = pbg_cmpstring(c0->_data, c1->_data, c0->_int);
 	/* Both are BOOLs. */
 	if(pbg_type_isbool(c0->_type) && pbg_type_isbool(c1->_type))
-		return pbg_evaluate_r(e, err, c0) < pbg_evaluate_r(e, err, c1);
-	pbg_err_op_arg_type(err, __LINE__, __FILE__, 
-			"Unknown input type to LT operator");
-	return -1;
-}
-
-int pbg_evaluate_op_gt(pbg_expr* e, pbg_error* err, pbg_field* field)
-{
-	int child0, child1;
-	pbg_field* c0, *c1;
-	child0 = ((int*)field->_data)[0], child1 = ((int*)field->_data)[1];
-	c0 = pbg_field_get(e, child0), c1 = pbg_field_get(e, child1);
-	if(c0->_type == PBG_NULL || c1->_type == PBG_NULL) {
+		result = pbg_evaluate_r(e, err, c0) - pbg_evaluate_r(e, err, c1);
+	/* Check if mismatched or invalid types. */
+	if(result == -2) {
 		pbg_err_op_arg_type(err, __LINE__, __FILE__, 
-				"NULL input given to GT operator.");
+				"Unknown input type to comparison operator");
+		return -1;
+	/* Compare results according to type of comparison operator. */
+	}else{
+		if(field->_type == PBG_OP_LT) return result < 0;
+		if(field->_type == PBG_OP_GT) return result > 0;
+		if(field->_type == PBG_OP_LTE) return result <= 0;
+		if(field->_type == PBG_OP_GTE) return result >= 0;
+		pbg_err_state(err, __LINE__, __FILE__, 
+				"Unknown result from select comparison function.");
 		return -1;
 	}
-	/* Both are NUMBERs. */
-	if(c0->_type == PBG_LT_NUMBER &&
-			c1->_type == PBG_LT_NUMBER)
-		return pbg_cmpnumber(c0->_data, c1->_data) > 0;
-	/* Both are DATEs. */
-	if(c0->_type == PBG_LT_DATE &&
-			c1->_type == PBG_LT_DATE)
-		return pbg_cmpdate(c0->_data, c1->_data) > 0;
-	/* Both are STRINGs. */
-	if(c0->_type == PBG_LT_STRING &&
-			c1->_type == PBG_LT_STRING)
-		return pbg_cmpstring(c0->_data, c1->_data, c0->_int) > 0;
-	/* Both are BOOLs. */
-	if(pbg_type_isbool(c0->_type) && pbg_type_isbool(c1->_type))
-		return pbg_evaluate_r(e, err, c0) > pbg_evaluate_r(e, err, c1);
-	pbg_err_op_arg_type(err, __LINE__, __FILE__, 
-			"Unknown input type to GT operator");
-	return -1;
-}
-
-int pbg_evaluate_op_lte(pbg_expr* e, pbg_error* err, pbg_field* field)
-{
-	int child0, child1;
-	pbg_field* c0, *c1;
-	child0 = ((int*)field->_data)[0], child1 = ((int*)field->_data)[1];
-	c0 = pbg_field_get(e, child0), c1 = pbg_field_get(e, child1);
-	if(c0->_type == PBG_NULL || c1->_type == PBG_NULL) {
-		pbg_err_op_arg_type(err, __LINE__, __FILE__, 
-				"NULL input given to LTE operator.");
-		return -1;
-	}
-	/* Both are NUMBERs. */
-	if(c0->_type == PBG_LT_NUMBER &&
-			c1->_type == PBG_LT_NUMBER)
-		return pbg_cmpnumber(c0->_data, c1->_data) <= 0;
-	/* Both are DATEs. */
-	if(c0->_type == PBG_LT_DATE &&
-			c1->_type == PBG_LT_DATE)
-		return pbg_cmpdate(c0->_data, c1->_data) <= 0;
-	/* Both are STRINGs. */
-	if(c0->_type == PBG_LT_STRING &&
-			c1->_type == PBG_LT_STRING)
-		return pbg_cmpstring(c0->_data, c1->_data, c0->_int) <= 0;
-	/* Both are BOOLs. */
-	if(pbg_type_isbool(c0->_type) && pbg_type_isbool(c1->_type))
-		return pbg_evaluate_r(e, err, c0) <= pbg_evaluate_r(e, err, c1);
-	pbg_err_op_arg_type(err, __LINE__, __FILE__, 
-			"Unknown input type to LTE operator");
-	return -1;
-}
-
-int pbg_evaluate_op_gte(pbg_expr* e, pbg_error* err, pbg_field* field)
-{
-	int child0, child1;
-	pbg_field* c0, *c1;
-	child0 = ((int*)field->_data)[0], child1 = ((int*)field->_data)[1];
-	c0 = pbg_field_get(e, child0), c1 = pbg_field_get(e, child1);
-	if(c0->_type == PBG_NULL || c1->_type == PBG_NULL) {
-		pbg_err_op_arg_type(err, __LINE__, __FILE__, 
-				"NULL input given to GTE operator.");
-		return -1;
-	}
-	/* Both are NUMBERs. */
-	if(c0->_type == PBG_LT_NUMBER &&
-			c1->_type == PBG_LT_NUMBER)
-		return pbg_cmpnumber(c0->_data, c1->_data) >= 0;
-	/* Both are DATEs. */
-	if(c0->_type == PBG_LT_DATE &&
-			c1->_type == PBG_LT_DATE)
-		return pbg_cmpdate(c0->_data, c1->_data) >= 0;
-	/* Both are STRINGs. */
-	if(c0->_type == PBG_LT_STRING &&
-			c1->_type == PBG_LT_STRING)
-		return pbg_cmpstring(c0->_data, c1->_data, c0->_int) >= 0;
-	/* Both are BOOLs. */
-	if(pbg_type_isbool(c0->_type) && pbg_type_isbool(c1->_type))
-		return pbg_evaluate_r(e, err, c0) >= pbg_evaluate_r(e, err, c1);
-	pbg_err_op_arg_type(err, __LINE__, __FILE__, 
-			"Unknown input type to GTE operator");
-	return -1;
 }
 
 int pbg_evaluate_op_typeof(pbg_expr* e, pbg_error* err, pbg_field* field)
@@ -1027,10 +947,10 @@ int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_field* field)
 			case PBG_OP_EXST:  return pbg_evaluate_op_exst(e, err, field);
 			case PBG_OP_EQ:    return pbg_evaluate_op_eq(e, err, field);
 			case PBG_OP_NEQ:   return pbg_evaluate_op_neq(e, err, field);
-			case PBG_OP_LT:    return pbg_evaluate_op_lt(e, err, field);
-			case PBG_OP_GT:    return pbg_evaluate_op_gt(e, err, field);
-			case PBG_OP_LTE:   return pbg_evaluate_op_lte(e, err, field);
-			case PBG_OP_GTE:   return pbg_evaluate_op_gte(e, err, field);
+			case PBG_OP_LT:
+			case PBG_OP_GT:
+			case PBG_OP_LTE:
+			case PBG_OP_GTE:   return pbg_evaluate_op_comp(e, err, field);
 			case PBG_OP_TYPE:  return pbg_evaluate_op_typeof(e, err, field);
 			case PBG_LT_TRUE:  return 1;
 			case PBG_LT_FALSE: return 0;
