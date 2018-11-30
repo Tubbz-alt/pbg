@@ -196,8 +196,8 @@ void pbg_free(pbg_expr* e)
 
 ```C
 /* Evaluate the PBG expression with the provided dictionary. If a runtime error 
- * occurs, initialize the provided error argument accordingly. */
-int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_expr_node (*dict)(char*, int))
+ * occurs, initialize the provided error accordingly. */
+int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_field (*dict)(char*, int))
 ```
 
 ```C
