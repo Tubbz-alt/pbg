@@ -326,7 +326,7 @@ pbg_field pbg_make_op(pbg_error* err, pbg_field_type type, int argc)
 	data = malloc(argc * sizeof(int));
 	if(data == NULL)
 		pbg_err_alloc(err, __LINE__, __FILE__);
-	return pbg_make_init(type, 0, data);
+	return pbg_make_init(type, argc, data);
 }
 
 /**
@@ -434,137 +434,26 @@ int pbg_check_op_arity(pbg_field_type type, int numargs)
 	return 1;
 }
 
-/**
- * TODO
- */
-int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str, 
-		int** fields, int** lengths, int** closings)
-{
-	int fieldi;  /* Index of this field. This is the return value. */
-	int n, strfieldstart;
-	pbg_field_type type;
-	pbg_field* field;
-	
-	int* children;  /* list of children nodes. */
-	int maxc;       /* maximum number of children. */
-	
-	/* Cache length of field for easier referencing. */
-	n = **lengths;
-	strfieldstart = **fields;
-	
-	/* Update pointers for next field. */
-	(*fields)++, (*lengths)++;
-	
-	/* Identify type of field. If the type cannot be resolve, throw an error. */
-	type = pbg_gettype(str + strfieldstart, n);
-	if(type == PBG_NULL) {
-		pbg_err_unknown_type(err, __LINE__, __FILE__, str + strfieldstart, n);
-		return 0;
-	}
-	
-	/* This field is an operator. */
-	if(pbg_type_isop(type)) {
-		
-		/* Maximum number of children this field has allocated space for. */
-		maxc = 2;
-		/* Initialize field and record field index. */
-		fieldi = pbg_store_constant(e, pbg_make_op(err, type, maxc));
-		field = pbg_field_get(e, fieldi);
-		/* Propagate error back to caller, if any. */
-		if(fieldi == 0) return 0;
-		
-		/* Recursively build subtree rooted at this operator field. pbg_evaluate 
-		 * set last element in fields to -1. This is used to ensure we don't 
-		 * run past the end of the expression string. */
-		while(**fields != -1 && **fields < **closings) {
-			/* Make recursive call to construct subtree rooted at child. */
-			int childi = pbg_parse_r(e, err, str, fields, lengths, closings);
-			/* Propagate error back to caller, if any. */
-			if(childi == 0) return 0;
-			/* Expand array of children if necessary. */
-			if(field->_int == maxc) {
-				maxc *= 2;  /* doubling gives amortized O(1) time insertion */
-				children = (int*)realloc(field->_data, maxc * sizeof(int));
-				if(children == NULL) {
-					pbg_err_alloc(err, __LINE__, __FILE__);
-					return 0;
-				}
-				field->_data = (void*) children;
-			}
-			/* Store index of child field. */
-			((int*)field->_data)[field->_int++] = childi;
-		}
-		
-		/* Enforce operator arity. */
-		if(pbg_check_op_arity(type, field->_int) == 0) {
-			pbg_err_op_arity(err, __LINE__, __FILE__, type, field->_int);
-			return 0;
-		}
-		
-		/* Tighten list of children and save it. */
-		children = (int*) realloc(field->_data, field->_int * sizeof(int));
-		if(children == NULL) {
-			pbg_err_alloc(err, __LINE__, __FILE__);
-			return 0;
-		}
-		field->_data = (void*) children;
-		
-		/* This field read all of its children until the next closing. 
-		 * The parent field will need to read until the end of the next 
-		 * next one. */
-		(*closings)++;
-		
-	/* This field is a literal. */
-	}else{
-		/* Move str to correct starting position. */
-		str += strfieldstart;
-		/* Identify type of literal and initialize the field! */
-		switch(type) {
-			case PBG_LT_VAR:
-				fieldi = pbg_store_variable(e, pbg_make_var(err, str, n));
-				break;
-			case PBG_LT_DATE:
-				fieldi = pbg_store_constant(e, pbg_make_date(err, str, n));
-				break;
-			case PBG_LT_NUMBER:
-				fieldi = pbg_store_constant(e, pbg_make_number(err, str, n));
-				break;
-			case PBG_LT_STRING:
-				fieldi = pbg_store_constant(e, pbg_make_string(err, str, n));
-				break;
-			case PBG_LT_TRUE:
-			case PBG_LT_FALSE:
-			case PBG_LT_TP_DATE:
-			case PBG_LT_TP_BOOL:
-			case PBG_LT_TP_NUMBER:
-			case PBG_LT_TP_STRING:
-				fieldi = pbg_store_constant(e, pbg_make_field(type));
-				break;
-			default:
-				pbg_err_unknown_type(err, __LINE__, __FILE__, str, n);
-				return 0;
-		}
-	}
-	
-	/* Done! */
-	return fieldi;
-}
-
 void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 {
-	int i, c, f, opened;
+	int i;
 	
 	int numfields, numvars, numclosings;
-	int depth, reachedend;
+	int depth, maxdepth, reachedend;
 	int instring, invar;
 	
-	int numconstant, numvariable;
-	int* fields;
-	int* lengths;
-	int* closings;
+	int* stack, stacksz;
+	int* groupsz, groupi;
+	int opened;
 	
-	int* lengths_cpy, *closings_cpy, *fields_cpy;
-	int status;
+	int* fields, *lengths, fieldi;
+	int* closings, closingi;
+	
+	int numconstant, numvariable;
+	
+	pbg_field_type type;
+	int* children, childi, id;
+	int start, len;
 	
 	/* Always start with a clean error! */
 	pbg_err_init(err, PBG_ERR_NONE, 0, NULL, 0, NULL);
@@ -579,39 +468,28 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 	e->_numconst = 0;
 	e->_numvars = 0;
 	
-	/* Verify that all strings & variable names are bounded, that all opening 
-	 * parentheses have friends, and that only a single expression is present. 
-	 * Also count the number of fields, variables, and closings. */
-	numfields = 0;
-	numvars = 0;
-	numclosings = 0;
-	depth = 0, reachedend = 0;
-	instring = 0, invar = 0;
+	/*******************************************************************
+	 * FIRST PASS                                                      *
+	 * 1    Count number of groups, fields, and variables.             *
+	 * 2    Identify depth of the tree.                                *
+	 * 3    Ensure group, string, and variable formatting are correct. *
+	 *******************************************************************/
+	
+	numfields = numvars = numclosings = 0;
+	depth = reachedend = maxdepth = 0;
+	instring = invar = 0;
 	for(i = 0; i < n; i++) {
+		/* Ignore whitespaces. */
 		if(pbg_iswhitespace(str[i])) continue;
-		/* Count number of variables. */
-		if(str[i] == '[') numvars++;
-		/* It's an open! Delve deeper into the tree. */
-		if(str[i] == '(') depth++;
-		/* It's a close! Rise up in the tree. */
-		else if(str[i] == ')') {
+		/* Open a new group. */
+		if(str[i] == '(') {
+			depth++, maxdepth++;
+		/* Close current group. */
+		}else if(str[i] == ')') {
 			numclosings++, depth--;
-			/* Negative tree depth only occurs if unmatched closing 
-			 * parentheses. */
-			if(depth < 0) {
-				pbg_err_syntax(err, __LINE__, __FILE__, str, i,
-						"Too many closing parentheses.");
-				return;
-			}
-			/* Depth zero only legally occurs at the end. */
-			if(depth == 0 && !reachedend)
-				reachedend = i;
-			else if(depth == 0 && reachedend) {
-				pbg_err_syntax(err, __LINE__, __FILE__, str, reachedend,
-						"More than one complete expression.");
-				return;
-			}
-		/* It's a field! */
+			if(depth < 0 || (depth == 0 && reachedend)) break;
+			if(depth == 0 && !reachedend) reachedend = i;
+		/* Process a new field. */
 		}else{
 			/* It's a string! */
 			if(str[i] == '\'') {
@@ -620,16 +498,33 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 				if(i != n) instring = 0;
 			/* It's a variable! */
 			}else if(str[i] == '[') {
-				invar = 1;
-				do i++; while(!(str[i] == ']' && str[i-1] != '\\'));
+				invar = 1, numvars++;
+				do i++; while(i != n && !(str[i] == ']' && str[i-1] != '\\'));
 				if(i != n) invar = 0;
 			/* It's literally anything else! */
 			}else
-				while(i != n && !pbg_iswhitespace(str[i+1]) && 
-						str[i+1] != '[' && str[i+1] != '(' && str[i+1] != ')') 
-					i++;
+				while(i != n-1 && !pbg_iswhitespace(str[i+1]) && str[i+1] != '[' && 
+						str[i+1] != '(' && str[i+1] != ')') i++;
 			numfields++;
 		}
+	}
+	/* Check if there are too many closing parentheses. */
+	if(depth < 0) {
+		pbg_err_syntax(err, __LINE__, __FILE__, str, i,
+				"Too many closing parentheses.");
+		return;
+	}
+	/* Check if there are not enough closing parentheses. */
+	if(depth != 0) {
+		pbg_err_syntax(err, __LINE__, __FILE__, str, 0,
+				"Too few closing parentheses.");
+		return;
+	}
+	/* Check if there are multiple (possible) expressions. */
+	if(depth == 0 && reachedend && i != n) {
+		pbg_err_syntax(err, __LINE__, __FILE__, str, reachedend,
+				"Too many opening parentheses yield multiple expressions.");
+		return;
 	}
 	/* Check if string is left unclosed. */
 	if(instring) {
@@ -643,111 +538,187 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 				"Unclosed variable.");
 		return;
 	}
-	/* Check if opening parentheses are left unclosed. */
-	if(depth != 0) {
-		pbg_err_syntax(err, __LINE__, __FILE__, str, 0,
-				"Unmatched opening parentheses.");
-		return;
-	}
+	
+	/*******************************************************************
+	 * SECOND PASS                                                     *
+	 * 1    Compute size of each group.                                *
+	 * 2    Identify starting index & length of each group.            *
+	 * 3    Identify index of each group closing.                      *
+	 *******************************************************************/
+	
+	/* Use a stack to identify number of fields in each group. */
+	stack = malloc(2*++maxdepth * sizeof(int));
+	
+	/* Use to record number of fields in each group. Notice that the number of 
+	 * groups is equal to the number of closings. */
+	groupsz = calloc(numclosings+1, sizeof(int));
+	
+	/* Allocate space to record field starting positions & lengths as well as 
+	 * the positions of group closings. */
+	fields = (int*) malloc(numfields * sizeof(int));
+	lengths = (int*) malloc(numfields * sizeof(int));
+	closings = (int*) malloc((numclosings+1) * sizeof(int));
 	
 	/* Compute sizes of constant and variable arrays. */
 	numconstant = numfields - numvars;
 	numvariable = numvars;
 	
-	/* Allocate space for needed arrays. */
-	/* One extra field is allocated to be set to -1. This helps determine when 
-	 * we've looped through every field. */
-	fields = (int*) malloc((numfields+1) * sizeof(int));
-	if(fields == NULL) {
-		pbg_err_alloc(err, __LINE__, __FILE__);
-		return;
-	}
-	lengths = (int*) malloc(numfields * sizeof(int));
-	if(lengths == NULL) {
-		pbg_err_alloc(err, __LINE__, __FILE__);
-		return;
-	}
-	closings = (int*) malloc(numclosings * sizeof(int));
-	if(closings == NULL) {
-		pbg_err_alloc(err, __LINE__, __FILE__);
-		return;
-	}
-	
-	/* Identify the indices of all fields and closings as well as lengths of 
-	 * the fields. */
-	for(i = 0, c = 0, f = 0, opened = 0; i < n; i++) {
-		/* Whitespaces are the enemy. */
-		if(pbg_iswhitespace(str[i])) continue;
-		/* It's a close! */
-		if(str[i] == ')') {
-			closings[c++] = i;
-		}else if(str[i] == '(') {
-			opened = 1;
-		/* It's a field! */
-		}else if(str[i] != '(') {
-			/* Grab index of field. */
-			fields[f] = i;
-			/* It's a string! */
-			if(str[i] == '\'') {
-				do i++; while(!(str[i] == '\'' && str[i-1] != '\\'));
-			/* It's a variable! */
-			}else if(str[i] == '[')
-				do i++; while(!(str[i] == ']' && str[i-1] != '\\'));
-			/* It's literally anything else! */
-			else
-				while(i != n-1 && !pbg_iswhitespace(str[i+1]) && str[i+1] != '[' && 
-						str[i+1] != '(' && str[i+1] != ')') i++;
-			/* Compute length of field. */
-			lengths[f] = i - fields[f] + 1;
-			/* Record opening field index. This will be checked as an 
-			 * operator later. */
-			if(opened == 1) {
-				pbg_field_type type = pbg_gettype(str + fields[f], lengths[f]);
-				if(!pbg_type_isop(type)) {
-					pbg_err_syntax(err, __LINE__, __FILE__, str, fields[f],
-							"Not an operator!");
-					return;
-				}
-				opened = 0;
-			}
-			f++;
-		}
-	}
-	
-	/* Needed to determine when we've reached the end of the expression string
-	 * in pbg_parse_r. */
-	fields[numfields] = -1;
-	
 	/* Allocate space for constant and variable field arrays. */
 	e->_constants = (pbg_field*) malloc(numconstant * sizeof(pbg_field));
-	if(e->_constants == NULL) {
-		free(fields), free(lengths), free(closings);
-		pbg_err_alloc(err, __LINE__, __FILE__);
-		return;
-	}
 	e->_variables = (pbg_field*) malloc(numvariable * sizeof(pbg_field));
-	if(e->_variables == NULL) {
-		free(e->_constants);
-		free(fields), free(lengths), free(closings);
+	
+	/* Ensure we got all of the memory we need. */
+	if(stack == NULL || groupsz == NULL || fields == NULL || lengths == NULL || 
+			closings == NULL || e->_constants == NULL || e->_variables == NULL) {
+		free(stack); free(groupsz);
+		free(fields); free(lengths); free(closings);
 		pbg_err_alloc(err, __LINE__, __FILE__);
+		pbg_free(e);
 		return;
 	}
 	
-	/* Recursively parse the expression string to build the expression tree. */
-	lengths_cpy = lengths;
-	closings_cpy = closings;
-	fields_cpy = fields;
-	status = pbg_parse_r(e, err, str, &fields_cpy, 
-			&lengths_cpy, &closings_cpy);
+	/* Do the work! */
+	opened = stacksz = groupi = closingi = fieldi = 0;
+	stacksz = 1;
+	stack[0] = 0;
+	for(i = 0; i < n; i++) {
+		/* Ignore whitespaces. */
+		if(pbg_iswhitespace(str[i])) continue;
+		/* Open a new group. Push it onto the stack. */
+		if(str[i] == '(') {
+			opened = 1;
+			if(groupi != 0) {
+				groupsz[stack[stacksz-1]]++;
+				stack[stacksz++] = groupi;
+			}
+			groupi++;
+		/* Close current group. Pop group it off of the stack. */
+		}else if(str[i] == ')') {
+			closings[closingi++] = i;
+			stacksz--;
+		/* Process a new field. */
+		}else{
+			/* Save index of the field. */
+			fields[fieldi] = i;
+			/* It's a string! */
+			if(str[i] == '\'') {
+				do i++; while(i != n && !(str[i] == '\'' && str[i-1] != '\\'));
+			/* It's a variable! */
+			}else if(str[i] == '[') {
+				do i++; while(i != n && !(str[i] == ']' && str[i-1] != '\\'));
+			/* It's literally anything else! */
+			}else
+				while(i != n-1 && !pbg_iswhitespace(str[i+1]) && str[i+1] != '[' && 
+						str[i+1] != '(' && str[i+1] != ')') i++;
+			/* Compute length of the field. */
+			lengths[fieldi] = i - fields[fieldi] + 1;
+			/* Identify type of field. */
+			type = pbg_gettype(str+fields[fieldi], lengths[fieldi]);
+			/* Ensure opener is operator, and no other field is an operator. */
+			if(opened != pbg_type_isop(type) || (opened = 0)) {
+				free(stack); free(groupsz);
+				free(fields); free(lengths); free(closings);
+				pbg_err_syntax(err, __LINE__, __FILE__, str, fields[fieldi], 
+						"Field ordering not respected.");
+				pbg_free(e);
+				return;
+			}
+			/* Add field to current group. */
+			groupsz[stack[stacksz-1]]++, fieldi++;
+		}
+	}
+	closings[closingi] = n;
 	
-	/* If an error occurred, clean up. */
-	if(status == 0) pbg_free(e);
+	/******************************
+	 * THIRD PASS                 *
+	 * 1    Build the final tree. *
+	 ******************************/
+	
+	children = NULL;
+	stacksz = groupi = closingi = childi = 0;
+	for(fieldi = 0; fieldi < numfields; fieldi++) {
+		/* Alias field start and field length for easier use. */
+		start = fields[fieldi];
+		len = lengths[fieldi];
+		/* Parsed all inputs to current operator. Pop it from the stack. */
+		if(start > closings[closingi]) {
+			closingi++;
+			/* Pop from the stack. */
+			stacksz--;
+			id = stack[2*stacksz];
+			childi = stack[2*stacksz+1];
+			/* Restore list of children from parent operator. */
+			children = pbg_field_get(e, id)->_data;
+		}
+		/* Identify type of field. */
+		type = pbg_gettype(str+start, len);
+		/* It's an operator! Push it onto the stack. */
+		if(pbg_type_isop(type)) {
+			/* Add operator to the tree. */
+			id = pbg_store_constant(e, 
+					pbg_make_op(err, type, groupsz[groupi]-1));
+			/* Enforce operator arity. */
+			if(pbg_check_op_arity(type, groupsz[groupi]-1) == 0) {
+				pbg_err_op_arity(err, __LINE__, __FILE__, type, groupsz[groupi]-1);
+				id = 0;
+			}
+			groupi++;
+			if(id == 0) break;
+			if(children != NULL)
+				children[childi++] = id;
+			/* Push the operator onto the stack. */
+			stack[2*stacksz] = id;
+			stack[2*stacksz+1] = childi;
+			stacksz++;
+			/* Replace children list with that of the new operator. */
+			childi = 0;
+			children = pbg_field_get(e, id)->_data;
+		/* It's a literal! */
+		}else{
+			/* It's a variable. */
+			if(type == PBG_LT_VAR)
+				id = pbg_store_variable(e, 
+						pbg_make_var(err, str+start, len));
+			/* It's a date. */
+			else if(type == PBG_LT_DATE)
+				id = pbg_store_constant(e, 
+						pbg_make_date(err, str+start, len));
+			/* It's a number. */
+			else if(type == PBG_LT_NUMBER)
+				id = pbg_store_constant(e, 
+						pbg_make_number(err, str+start, len));
+			/* It's a string. */
+			else if(type == PBG_LT_STRING)
+				id = pbg_store_constant(e, 
+						pbg_make_string(err, str+start, len));
+			/* It's a simple field. */
+			else if(type == PBG_LT_TRUE || 
+					type == PBG_LT_FALSE || 
+					type == PBG_LT_TP_DATE || 
+					type == PBG_LT_TP_BOOL || 
+					type == PBG_LT_TP_NUMBER || 
+					type == PBG_LT_TP_STRING)
+				id = pbg_store_constant(e, 
+							pbg_make_field(type));
+			/* It's an error... */
+			else {
+				pbg_err_unknown_type(err, __LINE__, __FILE__, str+start, n);
+				id = 0;
+			}
+			if(id == 0) break;
+			if(children != NULL)
+				children[childi++] = id;
+		}
+	}
+	/* Free expression if a parse error occurred. */
+	if(id == 0) pbg_free(e);
 	
 	/* Clean up! */
+	free(stack), free(groupsz);
 	free(fields), free(lengths), free(closings);
 	
-	/* Do not perform sanity checks if there's already an error. */
-	if(err->_type != PBG_ERR_NONE)
+	/* Do not perform sanity checks if an error occurred. */
+	if(pbg_iserror(err))
 		return;
 	
 	/* Sanity check: verify we parsed everything we expected. */
