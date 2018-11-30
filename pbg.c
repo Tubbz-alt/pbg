@@ -70,8 +70,6 @@ pbg_field pbg_make_var(pbg_error* err, char* str, int n);
 
 /* FIELD PARSING TOOLKIT */
 int pbg_check_op_arity(pbg_field_type type, int numargs);
-int pbg_parse_r(pbg_expr* e, pbg_error* err, char* str, 
-		int** fields, int** lengths, int** closings);
 
 /* FIELD EVALUATION TOOLKIT */
 int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_field* field);
@@ -81,8 +79,8 @@ int pbg_evaluate_op_or(pbg_expr* e, pbg_error* err, pbg_field* field);
 int pbg_evaluate_op_exst(pbg_expr* e, pbg_error* err, pbg_field* field);
 int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_field* field);
 int pbg_evaluate_op_neq(pbg_expr* e, pbg_error* err, pbg_field* field);
-int pbg_evaluate_op_comp(pbg_expr* e, pbg_error* err, pbg_field* field);
-int pbg_evaluate_op_typeof(pbg_expr* e, pbg_error* err, pbg_field* field);
+int pbg_evaluate_op_order(pbg_expr* e, pbg_error* err, pbg_field* field);
+int pbg_evaluate_op_type(pbg_expr* e, pbg_error* err, pbg_field* field);
 
 /* JANITORIAL FUNCTIONS */
 /* No local functions. */
@@ -859,7 +857,7 @@ int pbg_evaluate_op_neq(pbg_expr* e, pbg_error* err, pbg_field* field)
 			memcmp(c1->_data, c0->_data, c0->_int);
 }
 
-int pbg_evaluate_op_comp(pbg_expr* e, pbg_error* err, pbg_field* field)
+int pbg_evaluate_op_order(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
 	int result;
 	int child0, child1;
@@ -904,7 +902,7 @@ int pbg_evaluate_op_comp(pbg_expr* e, pbg_error* err, pbg_field* field)
 	}
 }
 
-int pbg_evaluate_op_typeof(pbg_expr* e, pbg_error* err, pbg_field* field)
+int pbg_evaluate_op_type(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
 	int i, child0, childi;
 	pbg_field* c0, *ci;
@@ -950,8 +948,8 @@ int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_field* field)
 			case PBG_OP_LT:
 			case PBG_OP_GT:
 			case PBG_OP_LTE:
-			case PBG_OP_GTE:   return pbg_evaluate_op_comp(e, err, field);
-			case PBG_OP_TYPE:  return pbg_evaluate_op_typeof(e, err, field);
+			case PBG_OP_GTE:   return pbg_evaluate_op_order(e, err, field);
+			case PBG_OP_TYPE:  return pbg_evaluate_op_type(e, err, field);
 			case PBG_LT_TRUE:  return 1;
 			case PBG_LT_FALSE: return 0;
 			default: pbg_err_state(err, __LINE__, __FILE__,
