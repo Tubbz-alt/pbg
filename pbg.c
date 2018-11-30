@@ -452,7 +452,7 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 	int numconstant, numvariable;
 	
 	pbg_field_type type;
-	int* children, childi, id;
+	int* children, id;
 	int start, len;
 	
 	/* Always start with a clean error! */
@@ -507,6 +507,12 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 						str[i+1] != '(' && str[i+1] != ')') i++;
 			numfields++;
 		}
+	}
+	/* Check if there aren't any fields. */
+	if(numfields == 0) {
+		pbg_err_syntax(err, __LINE__, __FILE__, str, 0,
+				"No fields in expression.");
+		return;
 	}
 	/* Check if there are too many closing parentheses. */
 	if(depth < 0) {
@@ -633,9 +639,13 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 	 * THIRD PASS                 *
 	 * 1    Build the final tree. *
 	 ******************************/
+	 
+	/* Alias simple stack operations for more readable code. */
+	#define pbg_stack_inputcnt stack[2*(stacksz-1)+1]
+	#define pbg_stack_fieldid stack[2*(stacksz-1)]
 	
 	children = NULL;
-	stacksz = groupi = closingi = childi = 0;
+	stacksz = groupi = closingi = 0;
 	for(fieldi = 0; fieldi < numfields; fieldi++) {
 		/* Alias field start and field length for easier use. */
 		start = fields[fieldi];
@@ -645,8 +655,7 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 			closingi++;
 			/* Pop from the stack. */
 			stacksz--;
-			id = stack[2*stacksz];
-			childi = stack[2*stacksz+1];
+			id = pbg_stack_fieldid;
 			/* Restore list of children from parent operator. */
 			children = pbg_field_get(e, id)->_data;
 		}
@@ -663,15 +672,16 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 				id = 0;
 			}
 			groupi++;
+			/* Check for errors when adding operator to tree. */
 			if(id == 0) break;
+			/* Add this operator as a child of the parent operator, if any. */
 			if(children != NULL)
-				children[childi++] = id;
+				children[pbg_stack_inputcnt++] = id;
 			/* Push the operator onto the stack. */
-			stack[2*stacksz] = id;
-			stack[2*stacksz+1] = childi;
 			stacksz++;
+			pbg_stack_fieldid = id;
+			pbg_stack_inputcnt = 0;
 			/* Replace children list with that of the new operator. */
-			childi = 0;
 			children = pbg_field_get(e, id)->_data;
 		/* It's a literal! */
 		}else{
@@ -705,9 +715,11 @@ void pbg_parse(pbg_expr* e, pbg_error* err, char* str, int n)
 				pbg_err_unknown_type(err, __LINE__, __FILE__, str+start, n);
 				id = 0;
 			}
+			/* Check for errors when adding literal to tree. */
 			if(id == 0) break;
+			/* Add this literal as a child of the parent operator, if any. */
 			if(children != NULL)
-				children[childi++] = id;
+				children[pbg_stack_inputcnt++] = id;
 		}
 	}
 	/* Free expression if a parse error occurred. */

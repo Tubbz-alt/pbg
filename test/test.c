@@ -50,8 +50,6 @@ pbg_field dict(char* key, int n)
 int suite_evaluate()
 {
 	init_test();
-	check(test_evaluate(&err, "(@ BOOL (! FALSE) (? [a]) (& FALSE FALSE) (& FALSE TRUE))", dict, TRUE));
-	end_test();
 	
 	/* TRUE */
 	check(test_evaluate(&err, "TRUE", dict, TRUE));
@@ -275,6 +273,7 @@ int suite_evaluate()
 	check(test_evaluate(&err, "(@ BOOL 'hi')", dict, FALSE));
 	check(test_evaluate(&err, "(@ BOOL (& 10 10))", dict, TRUE));
 	check(test_evaluate(&err, "(@ BOOL (& 10 10) 'hi' TRUE (! FALSE))", dict, FALSE));
+	check(test_evaluate(&err, "(@ BOOL (! FALSE) (? [a]) (& FALSE FALSE) (& FALSE TRUE))", dict, TRUE));
 	check(test_evaluate(&err, "(@)", dict, ERROR));
 	check(test_evaluate(&err, "(@ 10 10)", dict, ERROR));
 	
