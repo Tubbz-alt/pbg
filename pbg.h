@@ -11,6 +11,10 @@
  * dependent, which is just dandy. */
 #define PBG_UNUSED(x) (void)(x)
 
+/* Used to represent the result of an expression evaluation. */
+#define PBG_FALSE  0
+#define PBG_TRUE   1
+#define PBG_ERROR -1
 
 /*****************************
  *                           *

@@ -754,8 +754,8 @@ int pbg_evaluate_op_not(pbg_expr* e, pbg_error* err, pbg_field* field)
 	int child0, result;
 	child0 = ((int*)field->_data)[0];
 	result = pbg_evaluate_r(e, err, pbg_field_get(e, child0));
-	if(result == -1) return -1;  /* Pass error through. */
-	return !result;
+	if(result == PBG_ERROR) return PBG_ERROR;  /* Pass error through. */
+	return result == PBG_TRUE ? PBG_FALSE : PBG_TRUE;
 }
 
 int pbg_evaluate_op_and(pbg_expr* e, pbg_error* err, pbg_field* field)
@@ -765,10 +765,10 @@ int pbg_evaluate_op_and(pbg_expr* e, pbg_error* err, pbg_field* field)
 	for(i = 0; i < size; i++) {
 		childi = ((int*)field->_data)[i];
 		result = pbg_evaluate_r(e, err, pbg_field_get(e, childi));
-		if(result == -1) return -1;  /* Pass error through. */
-		if(result == 0)  return  0;  /* FALSE! */
+		if(result == PBG_ERROR) return PBG_ERROR;  /* Pass error through. */
+		if(result == PBG_FALSE) return PBG_FALSE;
 	}
-	return 1;  /* TRUE! */
+	return PBG_TRUE;
 }
 
 int pbg_evaluate_op_or(pbg_expr* e, pbg_error* err, pbg_field* field)
@@ -777,10 +777,10 @@ int pbg_evaluate_op_or(pbg_expr* e, pbg_error* err, pbg_field* field)
 	for(i = 0; i < field->_int; i++) {
 		childi = ((int*)field->_data)[i];
 		result = pbg_evaluate_r(e, err, pbg_field_get(e, childi));
-		if(result == -1) return -1;  /* Pass error through. */
-		if(result == 1)  return  1;  /* TRUE! */
+		if(result == PBG_ERROR) return PBG_ERROR;  /* Pass error through. */
+		if(result == PBG_TRUE)  return PBG_TRUE;
 	}
-	return 0;  /* FALSE! */
+	return PBG_FALSE;
 }
 
 int pbg_evaluate_op_exst(pbg_expr* e, pbg_error* err, pbg_field* field)
@@ -790,9 +790,9 @@ int pbg_evaluate_op_exst(pbg_expr* e, pbg_error* err, pbg_field* field)
 	for(i = 0; i < field->_int; i++) {
 		childi = ((int*)field->_data)[i];
 		if(pbg_field_get(e, childi)->_type == PBG_NULL)
-			return 0;  /* FALSE! */
+			return PBG_FALSE;
 	}
-	return 1;  /* TRUE! */
+	return PBG_TRUE;
 }
 
 int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_field* field)
@@ -806,7 +806,7 @@ int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_field* field)
 	if(c0->_type == PBG_NULL) {
 		pbg_err_op_arg_type(err, __LINE__, __FILE__, 
 				"NULL input given to EQ operator.");
-		return -1;
+		return PBG_ERROR;
 	}
 	/* We have a bunch of BOOLs! Evaluate them. */
 	if(pbg_type_isbool(c0->_type)) {
@@ -817,12 +817,12 @@ int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_field* field)
 			if(ci->_type == PBG_NULL) {
 				pbg_err_op_arg_type(err, __LINE__, __FILE__, 
 						"NULL input given to EQ operator.");
-				return -1;
+				return PBG_ERROR;
 			}
 			if(result != pbg_evaluate_r(e, err, ci))
-				return 0;
+				return PBG_FALSE;
 		}
-		return 1;
+		return PBG_TRUE;
 	/* We don't have a bunch of BOOLs! Do standard equality test. */
 	}else{
 		for(i = 1; i < field->_int; i++) {
@@ -831,16 +831,16 @@ int pbg_evaluate_op_eq(pbg_expr* e, pbg_error* err, pbg_field* field)
 			if(ci->_type == PBG_NULL) {
 				pbg_err_op_arg_type(err, __LINE__, __FILE__, 
 						"NULL input given to EQ operator.");
-				return -1;
+				return PBG_ERROR;
 			}
 			if(ci->_int != c0->_int || 
 					ci->_type != c0->_type)
-				return 0;  /* FALSE! */
+				return PBG_FALSE;
 			/* Ensure each data byte is identical. */
 			if(memcmp(ci->_data, c0->_data, c0->_int) != 0)
-				return 0;  /* FALSE! */
+				return PBG_FALSE;
 		}
-		return 1;  /* TRUE! */
+		return PBG_TRUE;
 	}
 }
 
@@ -854,15 +854,15 @@ int pbg_evaluate_op_neq(pbg_expr* e, pbg_error* err, pbg_field* field)
 	if(c0->_type == PBG_NULL || c1->_type == PBG_NULL) {
 		pbg_err_op_arg_type(err, __LINE__, __FILE__, 
 				"NULL input given to NEQ operator.");
-		return -1;
+		return PBG_ERROR;
 	}
 	/* We have two BOOLs! Evaluate them, and check if they are different. */
 	if(pbg_type_isbool(c0->_type) && pbg_type_isbool(c1->_type))
-		return pbg_evaluate_r(e, err, c0) != pbg_evaluate_r(e, err, c1);
+		return (pbg_evaluate_r(e, err, c0) != pbg_evaluate_r(e, err, c1)) ? 
+			PBG_TRUE : PBG_FALSE;
 	/* We don't have a bunch of BOOLs! Do standard difference check. */
-	else return c1->_type != c0->_type || 
-			c1->_int != c0->_int || 
-			memcmp(c1->_data, c0->_data, c0->_int);
+	else return (c1->_type != c0->_type || c1->_int != c0->_int || 
+			memcmp(c1->_data, c0->_data, c0->_int)) ? PBG_TRUE : PBG_FALSE;
 }
 
 int pbg_evaluate_op_order(pbg_expr* e, pbg_error* err, pbg_field* field)
@@ -875,7 +875,7 @@ int pbg_evaluate_op_order(pbg_expr* e, pbg_error* err, pbg_field* field)
 	if(c0->_type == PBG_NULL || c1->_type == PBG_NULL) {
 		pbg_err_op_arg_type(err, __LINE__, __FILE__, 
 				"NULL input given to comparison operator.");
-		return -1;
+		return PBG_ERROR;
 	}
 	result = -2;
 	/* Both are NUMBERs. */
@@ -897,16 +897,16 @@ int pbg_evaluate_op_order(pbg_expr* e, pbg_error* err, pbg_field* field)
 	if(result == -2) {
 		pbg_err_op_arg_type(err, __LINE__, __FILE__, 
 				"Unknown input type to comparison operator");
-		return -1;
+		return PBG_ERROR;
 	/* Compare results according to type of comparison operator. */
 	}else{
-		if(field->_type == PBG_OP_LT) return result < 0;
-		if(field->_type == PBG_OP_GT) return result > 0;
-		if(field->_type == PBG_OP_LTE) return result <= 0;
-		if(field->_type == PBG_OP_GTE) return result >= 0;
+		if(field->_type == PBG_OP_LT) return result < 0 ? PBG_TRUE : PBG_FALSE;
+		if(field->_type == PBG_OP_GT) return result > 0 ? PBG_TRUE : PBG_FALSE;
+		if(field->_type == PBG_OP_LTE) return result <= 0 ? PBG_TRUE : PBG_FALSE;
+		if(field->_type == PBG_OP_GTE) return result >= 0 ? PBG_TRUE : PBG_FALSE;
 		pbg_err_state(err, __LINE__, __FILE__, 
 				"Unknown result from select comparison function.");
-		return -1;
+		return PBG_ERROR;
 	}
 }
 
@@ -922,27 +922,27 @@ int pbg_evaluate_op_type(pbg_expr* e, pbg_error* err, pbg_field* field)
 	if(type < PBG_MIN_LT_TP || type > PBG_MAX_LT_TP) {
 		pbg_err_op_arg_type(err, __LINE__, __FILE__, 
 				"First input to TYPE operator must be a type literal.");
-		return -1;
+		return PBG_ERROR;
 	}
 	/* Verify types of all trailing arguments. */
 	for(i = 1; i < field->_int; i++) {
 		childi = ((int*)field->_data)[i];
 		ci = pbg_field_get(e, childi);
 		if(type == PBG_LT_TP_BOOL && !pbg_type_isbool(ci->_type))
-			return 0;  /* FALSE */
+			return PBG_FALSE;
 		if(type == PBG_LT_TP_DATE && ci->_type != PBG_LT_DATE)
-			return 0;  /* FALSE */
+			return PBG_FALSE;
 		if(type == PBG_LT_TP_NUMBER && ci->_type != PBG_LT_NUMBER)
-			return 0;  /* FALSE */
+			return PBG_FALSE;
 		if(type == PBG_LT_TP_STRING && ci->_type != PBG_LT_STRING)
-			return 0;  /* FALSE */
+			return PBG_FALSE;
 	}
-	return 1;  /* TRUE! */
+	return PBG_TRUE;
 }
 
 int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_field* field)
 {
-	if(pbg_type_isbool(field->_type))
+	if(pbg_type_isbool(field->_type)) {
 		switch(field->_type) {
 			case PBG_OP_NOT:   return pbg_evaluate_op_not(e, err, field);
 			case PBG_OP_AND:   return pbg_evaluate_op_and(e, err, field);
@@ -955,15 +955,15 @@ int pbg_evaluate_r(pbg_expr* e, pbg_error* err, pbg_field* field)
 			case PBG_OP_LTE:
 			case PBG_OP_GTE:   return pbg_evaluate_op_order(e, err, field);
 			case PBG_OP_TYPE:  return pbg_evaluate_op_type(e, err, field);
-			case PBG_LT_TRUE:  return 1;
-			case PBG_LT_FALSE: return 0;
+			case PBG_LT_TRUE:  return PBG_TRUE;
+			case PBG_LT_FALSE: return PBG_FALSE;
 			default: pbg_err_state(err, __LINE__, __FILE__,
 							"Unsupported operation.");
 		}
-	else
-		pbg_err_state(err, __LINE__, __FILE__, 
-				"Cannot evaluate a non-BOOL value.");
-	return -1;
+	}
+	pbg_err_state(err, __LINE__, __FILE__, 
+			"Cannot evaluate a non-BOOL value.");
+	return PBG_ERROR;
 }
 
 int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_field (*dict)(char*, int))
@@ -978,7 +978,7 @@ int pbg_evaluate(pbg_expr* e, pbg_error* err, pbg_field (*dict)(char*, int))
 	newvars = (pbg_field*) malloc(e->_numvars * sizeof(pbg_field));
 	if(newvars == NULL) {
 		pbg_err_alloc(err, __LINE__, __FILE__);
-		return -1;
+		return PBG_ERROR;
 	}
 	for(i = 0; i < e->_numvars; i++) {
 		var = e->_variables+i;

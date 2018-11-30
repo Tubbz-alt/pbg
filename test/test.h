@@ -7,17 +7,6 @@
 #define PBG_TEST_PASS 0
 #define PBG_TEST_FAIL 1
 
-/* These are the expect values for test_evaluate. */
-#define FALSE  0
-#define TRUE   1
-#define ERROR  2
-
-	pbg_error_type  _type;  /* Error type. */
-	int             _line;  /* Line of file where error occurred. */
-	char*           _file;  /* File in which error occurred. */
-	int             _int;   /* Type determines what this is used for! */
-	void*           _data;  /* Data to be included with error report. */
-
 /**
  * Prints the given error in a human-readable format.
  * @param err  Error to translate.

@@ -157,7 +157,7 @@ The at least operator, abbreviated `GTE`. Take two inputs of any type. Return `T
 
 ##### Existence `(? ALL ...)`
 
-The existence operator, abbreviated `EXST`. Take one input of any type. Return `TRUE` only if it its argument is not `NULL`. `EXST` is useful for checking if a variable is defined.
+The existence operator, abbreviated `EXST`. Take one or more inputs of any type. Return `TRUE` only if it its argument is not `NULL`. `EXST` is useful for checking if a variable is defined.
 + `(? 5)` is `TRUE`
 + `(? 2018-10-12)` is `TRUE`
 + `(? NULL)` is `FALSE`
@@ -273,7 +273,7 @@ int main(void)
 	}
 	
 	/* Success! Print the output. */
-	printf("%s is %s\n", str, (result == 1) ? "TRUE" : "FALSE");
+	printf("%s is %s\n", str, (result == PBG_TRUE) ? "TRUE" : "FALSE");
 	return 0;
 }
 

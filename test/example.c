@@ -32,7 +32,7 @@ int main(void)
 	}
 	
 	/* Success! Print the output. */
-	printf("%s is %s\n", str, (result == 1) ? "TRUE" : "FALSE");
+	printf("%s is %s\n", str, (result == PBG_TRUE) ? "TRUE" : "FALSE");
 	return 0;
 }
 
