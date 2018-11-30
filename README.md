@@ -1,6 +1,6 @@
 # pbg
 
-(? [[overview](#overview)] [[philosophy](#philosophy)] [[features](#features)] [[design](#design)] [[library & example](#library)])
+**( ? [[overview](#overview)] [[philosophy](#philosophy)] [[features](#features)] [[design](#design)] [[library & example](#library)] )**
 
 
 ## overview
@@ -37,7 +37,7 @@ An **operation** is a built-in boolean-valued function. A **literal** is either 
 
 Each literal has a type. pbg defines the following types: `DATE`, `BOOL`, `NUMBER`, `STRING`, and `NULL`. The type of a literal is not explicitly declared; it is implicitly encoded via formatting. Literals can be either constants or variables.
 
-##### variables
+##### VAR
 
 A `VAR` literal represents a variable and is formatted using square brackets. So `[start]` defines a variable named `start`. During evaluation, a variable will be replaced either by a constant or by `NULL`, if it is undefined.
 
@@ -71,6 +71,7 @@ Only two operations, `EXST` and `TYPE`, support `NULL` as an input. All other op
 The boolean not operator, abbreviated `NOT`. Take a single input of type `BOOL`. Return the inverse of its input.
 + `(! TRUE)` is `FALSE`
 + `(! FALSE)` is `TRUE`
++ `(! (! FALSE))` is `FALSE`
 
 ##### AND `(& BOOL BOOL ...)`
 
